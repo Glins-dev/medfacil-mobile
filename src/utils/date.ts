@@ -1,3 +1,5 @@
+import { onlyDigits } from "@/utils/cpf";
+
 export const CLINIC_TZ = "America/Recife";
 
 export type DayPeriod = "Manhã" | "Tarde" | "Noite";
@@ -128,4 +130,27 @@ export function describeDayHeading(dateKey: string): string {
   if (dateKey === today) return `Hoje · ${long}`;
   if (dateKey === tomorrow) return `Amanhã · ${long}`;
   return long;
+}
+
+/** Aplica mascara DD/MM/AAAA para datas digitadas. */
+export function maskDate(value: string): string {
+  return onlyDigits(value)
+    .slice(0, 8)
+    .replace(/^(\d{2})(\d)/, "$1/$2")
+    .replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+}
+
+/** Valida data real no formato DD/MM/AAAA (>= 1900 e nao futura). */
+export function isValidDate(value: string): boolean {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) return false;
+  const [, dd, mm, yyyy] = match.map(Number);
+  const date = new Date(yyyy, mm - 1, dd);
+  return (
+    yyyy >= 1900 &&
+    date.getFullYear() === yyyy &&
+    date.getMonth() === mm - 1 &&
+    date.getDate() === dd &&
+    date <= new Date()
+  );
 }
