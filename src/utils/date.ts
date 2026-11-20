@@ -6,8 +6,11 @@ export type DayPeriod = "Manhã" | "Tarde" | "Noite";
 
 export interface DateDescription {
   weekday: string;
+  weekdayLong: string;
   day: number;
   month: string;
+  monthLong: string;
+  dayMonth: string;
   long: string;
 }
 
@@ -15,6 +18,21 @@ const longDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "long",
   year: "numeric",
+  timeZone: CLINIC_TZ,
+});
+
+const weekdayLongClinicFormatter = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  timeZone: CLINIC_TZ,
+});
+
+const dayClinicFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "numeric",
+  timeZone: CLINIC_TZ,
+});
+
+const monthLongClinicFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
   timeZone: CLINIC_TZ,
 });
 
@@ -45,8 +63,18 @@ const weekdayUtcFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
+const weekdayLongUtcFormatter = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  timeZone: "UTC",
+});
+
 const monthUtcFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "short",
+  timeZone: "UTC",
+});
+
+const monthLongUtcFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
   timeZone: "UTC",
 });
 
@@ -56,6 +84,11 @@ const longUtcFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
   timeZone: "UTC",
 });
+
+function capitalizeFirst(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 function getClinicDateParts(date: Date): { year: number; month: number; day: number } {
   const parts = clinicDatePartsFormatter.formatToParts(date);
@@ -69,17 +102,30 @@ function getClinicDateParts(date: Date): { year: number; month: number; day: num
   };
 }
 
-/** Formata um instante ISO UTC por extenso no fuso da clínica (ex.: "10 de outubro de 2026"). */
+// Formata um instante ISO UTC por extenso no fuso da clinica (ex.: "10 de outubro de 2026").
 export function formatLongDate(iso: string): string {
   return longDateFormatter.format(new Date(iso));
 }
 
-/** Formata hora "HH:mm" (24h) de um instante ISO UTC no fuso da clínica. */
+// Formata o dia da semana por extenso com inicial maiuscula no fuso da clinica (ex.: "Segunda-feira").
+export function formatWeekdayLong(iso: string): string {
+  return capitalizeFirst(weekdayLongClinicFormatter.format(new Date(iso)));
+}
+
+// Formata dia e mes com inicial maiuscula no fuso da clinica (ex.: "24 de Novembro").
+export function formatDayMonth(iso: string): string {
+  const date = new Date(iso);
+  const day = dayClinicFormatter.format(date);
+  const month = capitalizeFirst(monthLongClinicFormatter.format(date));
+  return `${day} de ${month}`;
+}
+
+// Formata hora "HH:mm" (24h) de um instante ISO UTC no fuso da clinica.
 export function formatTime(iso: string): string {
   return timeFormatter.format(new Date(iso));
 }
 
-/** Retorna o período do dia ("Manhã", "Tarde" ou "Noite") no fuso da clínica. */
+// Retorna o periodo do dia ("Manha", "Tarde" ou "Noite") no fuso da clinica.
 export function getPeriod(iso: string): DayPeriod {
   const parts = hourFormatter.formatToParts(new Date(iso));
   const hourValue = parts.find((p) => p.type === "hour")?.value ?? "0";
@@ -90,7 +136,7 @@ export function getPeriod(iso: string): DayPeriod {
   return "Noite";
 }
 
-/** Próximos N dias, a partir de hoje, no horário da clínica ("AAAA-MM-DD"). */
+// Proximos N dias, a partir de hoje, no horario da clinica ("AAAA-MM-DD").
 export function getUpcomingDates(count: number): string[] {
   const { year, month, day } = getClinicDateParts(new Date());
 
@@ -99,20 +145,25 @@ export function getUpcomingDates(count: number): string[] {
   );
 }
 
-/** Textos localizados de uma data "AAAA-MM-DD" calculados em UTC sem deslocar o dia. */
+// Textos localizados de uma data "AAAA-MM-DD" calculados em UTC sem deslocar o dia.
 export function describeDate(date: string): DateDescription {
   const [y, m, d] = date.split("-").map(Number);
   const utc = new Date(Date.UTC(y, m - 1, d));
+  const weekdayLong = capitalizeFirst(weekdayLongUtcFormatter.format(utc));
+  const monthLong = capitalizeFirst(monthLongUtcFormatter.format(utc));
 
   return {
     weekday: weekdayUtcFormatter.format(utc).replace(/\.$/, ""),
+    weekdayLong,
     day: d,
     month: monthUtcFormatter.format(utc).replace(/\.$/, ""),
+    monthLong,
+    dayMonth: `${d} de ${monthLong}`,
     long: longUtcFormatter.format(utc),
   };
 }
 
-/** Retorna "AAAA-MM-DD" de um instante ISO UTC no horário da clínica. */
+// Retorna "AAAA-MM-DD" de um instante ISO UTC no horario da clinica.
 export function getClinicDateKey(iso: string): string {
   const { year, month, day } = getClinicDateParts(new Date(iso));
   const mm = String(month).padStart(2, "0");
@@ -120,7 +171,7 @@ export function getClinicDateKey(iso: string): string {
   return `${year}-${mm}-${dd}`;
 }
 
-/** Título de um dia "AAAA-MM-DD": "Hoje · ...", "Amanhã · ..." ou apenas a data por extenso. */
+// Titulo de um dia "AAAA-MM-DD": "Hoje · ...", "Amanha · ..." ou apenas a data por extenso.
 export function describeDayHeading(dateKey: string): string {
   const today = getClinicDateKey(new Date().toISOString());
   const [y, m, d] = today.split("-").map(Number);
@@ -132,7 +183,7 @@ export function describeDayHeading(dateKey: string): string {
   return long;
 }
 
-/** Aplica mascara DD/MM/AAAA para datas digitadas. */
+// Aplica mascara DD/MM/AAAA para datas digitadas.
 export function maskDate(value: string): string {
   return onlyDigits(value)
     .slice(0, 8)
@@ -140,7 +191,7 @@ export function maskDate(value: string): string {
     .replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
 }
 
-/** Valida data real no formato DD/MM/AAAA (>= 1900 e nao futura). */
+// Valida data real no formato DD/MM/AAAA (>= 1900 e nao futura).
 export function isValidDate(value: string): boolean {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
   if (!match) return false;

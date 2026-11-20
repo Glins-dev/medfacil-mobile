@@ -7,8 +7,30 @@ import {
   type AppointmentStatus,
 } from "@/services/appointment.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { formatTime, getClinicDateKey } from "@/utils/date";
 
 export type { Appointment, AppointmentStatus };
+
+// Verifica se o paciente ja possui consulta ativa no mesmo dia e horario (America/Recife).
+export function findPatientAppointmentConflict(
+  appointments: Appointment[],
+  date: string,
+  time: string,
+  ignoreAppointmentId?: string
+): Appointment | null {
+  return (
+    appointments.find((item) => {
+      if (ignoreAppointmentId && item.id === ignoreAppointmentId) return false;
+      if (item.status !== "AGENDADO" && item.status !== "CONFIRMADO") {
+        return false;
+      }
+      return (
+        getClinicDateKey(item.dateTime) === date &&
+        formatTime(item.dateTime) === time
+      );
+    }) ?? null
+  );
+}
 
 // Rede de seguranca para mudancas feitas por terceiros (medico ou admin).
 const STALE_AFTER_MS = 5 * 60 * 1000;

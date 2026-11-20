@@ -21,7 +21,12 @@ import type { PatientTabParamList } from "@/navigation/types";
 import { authService } from "@/services/auth.service";
 import { useNextAppointment } from "@/stores/appointment.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { formatLongDate, formatTime, getPeriod } from "@/utils/date";
+import {
+  formatDayMonth,
+  formatTime,
+  formatWeekdayLong,
+  getPeriod,
+} from "@/utils/date";
 
 type Props = BottomTabScreenProps<PatientTabParamList, "PatientHome">;
 
@@ -137,7 +142,7 @@ export function PatientHomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Sair da conta"
             accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-            className="min-h-[44px] min-w-[44px] justify-center rounded-lg px-2 active:opacity-70"
+            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
           >
             <Text className="text-sm font-semibold text-brand underline">
               {loggingOut ? "Saindo..." : "Sair"}
@@ -191,11 +196,11 @@ export function PatientHomeScreen({ navigation }: Props) {
           {status === "ready" && appointment ? (
             <MainCard
               title={appointment.specialty ?? "Consulta"}
-              description={`${appointment.doctorName}\n${formatLongDate(
+              description={`${appointment.doctorName}\n${formatWeekdayLong(
                 appointment.dateTime
-              )} · ${formatTime(appointment.dateTime)} (${getPeriod(
+              )}, ${formatDayMonth(appointment.dateTime)} · ${formatTime(
                 appointment.dateTime
-              )})`}
+              )} (${getPeriod(appointment.dateTime)})`}
               actionLabel="Ver consultas"
               onAction={() => navigation.navigate("PatientConsultations")}
             />

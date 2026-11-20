@@ -17,8 +17,9 @@ import type { Appointment, AppointmentStatus } from "@/services/appointment.serv
 import { useAppointments } from "@/stores/appointment.store";
 import {
   describeDate,
-  formatLongDate,
+  formatDayMonth,
   formatTime,
+  formatWeekdayLong,
   getClinicDateKey,
   getPeriod,
 } from "@/utils/date";
@@ -170,8 +171,11 @@ function ConsultationCard({
           <Text numberOfLines={1} className="text-sm text-muted">
             {item.doctorName}
           </Text>
-          <Text className="mt-0.5 text-sm font-semibold text-brand">
-            {formatLongDate(item.dateTime)} · {formatTime(item.dateTime)}
+          <Text className="mt-0.5 text-xs font-medium text-muted">
+            {formatWeekdayLong(item.dateTime)}
+          </Text>
+          <Text className="text-sm font-bold text-brand-dark">
+            {formatDayMonth(item.dateTime)} · {formatTime(item.dateTime)}
           </Text>
         </View>
       </View>
@@ -236,7 +240,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={`Filtrar por ${option.label}`}
               accessibilityState={{ selected: active }}
-              className={`min-h-[44px] flex-1 items-center justify-center rounded-xl border px-3 ${
+              className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border px-3 ${
                 active
                   ? "border-brand bg-brand"
                   : "border-line bg-white"
