@@ -3,11 +3,14 @@ import axios from "axios";
 import { useAuthStore } from "@/stores/auth.store";
 
 const baseURL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000/api/v1";
+  process.env.EXPO_PUBLIC_API_URL?.trim() || "http://10.0.2.2:3000/api/v1";
 
 export const api = axios.create({
   baseURL,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
   timeout: 15000,
 });
 
@@ -38,4 +41,11 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
     if (!error.response) return "Sem conexão com o servidor.";
   }
   return fallback;
+}
+
+export function getApiErrorStatus(error: unknown): number | undefined {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status;
+  }
+  return undefined;
 }
