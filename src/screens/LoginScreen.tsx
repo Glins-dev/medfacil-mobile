@@ -1,54 +1,55 @@
-import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { Button, Field, TextLink } from "@/components/ui";
-import type { AuthStackParamList, UserRole } from "@/navigation/types";
-import { api, getApiErrorMessage } from "@/services/api";
+import { Button, Input, TextLink } from "@/components";
+import type { AuthStackParamList } from "@/navigation/types";
+import { loginSchema, type LoginFormData } from "@/schemas/auth.schema";
+import { getApiErrorMessage } from "@/services/api";
+import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
-import { isValidCpf, maskCpf, onlyDigits } from "@/utils/cpf";
+import { maskCpf } from "@/utils/cpf";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
-interface AuthResponse {
-  token: string;
-  user: { id: string; name: string; email: string; role: UserRole };
-}
-
+// Tela de autenticacao por CPF e senha integrada ao authService e SecureStore.
 export function LoginScreen({ navigation }: Props) {
-  const setSession = useAuthStore((s) => s.setSession);
-  const [cpf, setCpf] = useState("");
-  const [password, setPassword] = useState("");
-  const [cpfError, setCpfError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      cpf: "",
+      password: "",
+    },
+  });
 
-  const handleSubmit = async () => {
-    const cpfInvalid = !cpf ? "CPF é obrigatório" : !isValidCpf(cpf) ? "CPF inválido" : "";
-    const passInvalid = password ? "" : "Senha é obrigatória";
-    setCpfError(cpfInvalid);
-    setPasswordError(passInvalid);
-    setSubmitError("");
-    if (cpfInvalid || passInvalid) return;
-
-    setLoading(true);
+  const onSubmit = async (data: LoginFormData) => {
+    clearErrors("root");
     try {
-      const { data } = await api.post<AuthResponse>("/auth/login", {
-        cpf: onlyDigits(cpf),
-        password,
-      });
-      setSession(data.token, data.user);
+      const response = await authService.login(data);
+      useAuthStore.getState().setSession(response.token, response.user);
     } catch (error) {
-      setSubmitError(getApiErrorMessage(error, "Erro ao fazer login"));
-    } finally {
-      setLoading(false);
+      setError("root", {
+        message: getApiErrorMessage(error, "Erro ao fazer login."),
+      });
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-brand-cream">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -57,12 +58,17 @@ export function LoginScreen({ navigation }: Props) {
           contentContainerClassName="flex-grow px-6 pb-8 pt-6"
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="text-right text-lg font-bold text-brand-dark">
-            Med<Text className="font-semibold italic text-brand">fácil</Text>
-          </Text>
+          <View className="items-end">
+            <Text className="text-lg font-bold tracking-tight text-brand-dark">
+              Med<Text className="font-semibold italic text-brand">fácil</Text>
+            </Text>
+          </View>
 
           <View className="mt-8">
-            <Text accessibilityRole="header" className="text-2xl font-bold text-brand-dark">
+            <Text
+              accessibilityRole="header"
+              className="text-2xl font-bold text-brand-dark"
+            >
               Entre na sua conta
             </Text>
             <Text className="mt-2 text-sm text-muted">
@@ -71,37 +77,78 @@ export function LoginScreen({ navigation }: Props) {
           </View>
 
           <View className="mt-8 gap-5">
-            <Field
-              label="CPF"
-              value={cpf}
-              onChangeText={(v) => setCpf(maskCpf(v))}
-              keyboardType="number-pad"
-              autoComplete="username"
-              placeholder="Digite seu CPF"
-              error={cpfError}
+            <Controller
+              control={control}
+              name="cpf"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="CPF"
+                  value={value}
+                  onChangeText={(text) => {
+                    if (errors.root) clearErrors("root");
+                    onChange(maskCpf(text));
+                  }}
+                  onBlur={onBlur}
+                  keyboardType="number-pad"
+                  autoComplete="username"
+                  maxLength={14}
+                  placeholder="Digite seu CPF"
+                  editable={!isSubmitting}
+                  error={errors.cpf?.message}
+                />
+              )}
             />
-            <Field
-              label="Senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="current-password"
-              placeholder="Digite sua senha"
-              error={passwordError}
+
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Senha"
+                  value={value}
+                  onChangeText={(text) => {
+                    if (errors.root) clearErrors("root");
+                    onChange(text);
+                  }}
+                  onBlur={onBlur}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="current-password"
+                  placeholder="Digite sua senha"
+                  editable={!isSubmitting}
+                  error={errors.password?.message}
+                />
+              )}
             />
-            {submitError ? (
-              <Text accessibilityRole="alert" className="text-center text-sm text-danger">
-                {submitError}
-              </Text>
+
+            {errors.root?.message ? (
+              <View className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3">
+                <Text
+                  accessibilityRole="alert"
+                  className="text-center text-sm font-medium text-danger"
+                >
+                  {errors.root.message}
+                </Text>
+              </View>
             ) : null}
           </View>
 
-          <View className="mt-auto items-center gap-3 pt-10">
-            <Button label={loading ? "Entrando..." : "Entrar"} onPress={handleSubmit} loading={loading} />
+          <View className="mt-auto items-center gap-4 pt-10">
+            <Button
+              label={isSubmitting ? "Entrando..." : "Entrar"}
+              onPress={() => {
+                void handleSubmit(onSubmit)();
+              }}
+              loading={isSubmitting}
+            />
+
             <View className="flex-row items-center">
               <Text className="text-sm text-muted">Ainda não tem conta?</Text>
-              <TextLink label="Criar conta" onPress={() => navigation.navigate("Register")} />
+              <TextLink
+                label="Criar conta"
+                disabled={isSubmitting}
+                onPress={() => navigation.navigate("Register")}
+              />
             </View>
           </View>
         </ScrollView>
