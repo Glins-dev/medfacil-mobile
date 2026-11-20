@@ -1,6 +1,6 @@
 # MedFácil Mobile
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-v0.1.0-0e706f)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-v0.2.0-0e706f)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-ISC-004959)
 ![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white)
 ![React Native](https://img.shields.io/badge/React%20Native-61DAFB?logo=react&logoColor=black)
@@ -9,7 +9,7 @@
 
 Aplicativo mobile (Android e iOS) do **MedFácil**, sistema de agendamento de consultas médicas. É a migração do PWA (`medfacil-pwa-main`) para **Expo + React Native + TypeScript**, consumindo a mesma API REST do `medfacil-backend`, com foco em **acessibilidade** e **agendamento médico simples**.
 
-> **Status:** `v0.1.0` — fase de documentação e planejamento. O código do app ainda será implementado conforme o [backlog](docs/backlog-issues.md). A coluna "PWA/API" da tabela abaixo indica o que já existe no sistema atual e serve como referência de paridade.
+> **Status:** `v0.2.0` — em desenvolvimento ativo conforme o [backlog](docs/backlog-issues.md). Setup Expo, NativeWind v4, utilitários, camada de serviços REST, persistência segura (`expo-secure-store`), biblioteca de UI base e fluxos de Login e Autocadastro já implementados.
 
 ## Perfis
 
@@ -21,12 +21,12 @@ Aplicativo mobile (Android e iOS) do **MedFácil**, sistema de agendamento de co
 
 ## Funcionalidades
 
-| Funcionalidade | RF | PWA / API (referência) | Mobile `v0.1.0` |
+| Funcionalidade | RF | PWA / API (referência) | Mobile (`v0.2.0`) |
 | :--- | :--- | :---: | :---: |
-| Login por CPF e senha | RF01 | ✅ | 🗓️ Planejada |
-| Redirecionamento/proteção por role | RF02 | ✅ | 🗓️ Planejada |
-| Logout | RF03 | ✅ | 🗓️ Planejada |
-| Cadastro de paciente (CPF validado) | RF04 | ✅ | 🗓️ Planejada |
+| Login por CPF e senha | RF01 | ✅ | ✅ Implementada (`v0.2.0`) |
+| Redirecionamento/proteção por role | RF02 | ✅ | ✅ Implementada (`v0.2.0`) |
+| Logout | RF03 | ✅ | ✅ Implementada (`v0.2.0`) |
+| Cadastro de paciente (CPF validado) | RF04 | ✅ | ✅ Implementada (`v0.2.0`) |
 | Home do paciente (próxima consulta) | RF05 | ✅ | 🗓️ Planejada |
 | Agendamento em 4 etapas + revisão | RF06 | ✅ | 🗓️ Planejada |
 | Listar agendamentos | RF07 | ✅ | 🗓️ Planejada |
@@ -35,14 +35,14 @@ Aplicativo mobile (Android e iOS) do **MedFácil**, sistema de agendamento de co
 | Agenda do médico (próximas consultas por dia) | RF10 | ✅ (sem filtro por período) | 🗓️ Planejada |
 | Gestão de especialidades | RF11 | ✅ | 🗓️ Planejada |
 | Cadastro de médico com CRM | RF12 | ✅ | 🗓️ Planejada |
-| Sessão segura (`expo-secure-store`) | RNF01 | ❌ (usa `localStorage`) | 🗓️ Planejada |
+| Sessão segura (`expo-secure-store`) | RNF01 | ❌ (usa `localStorage`) | ✅ Implementada (`v0.2.0`) |
 | Esqueci minha senha | — | ❌ (apenas visual) | ⛔ Fora do escopo |
 | Receitas, prontuário, exames, notificações | — | ❌ (placeholders) | ⛔ Fora do escopo |
 | Agenda geral/bloqueios/indicadores do admin | — | ❌ (dados fictícios) | ⛔ Fora do escopo |
 
 ## Stack
 
-Expo · React Native · Expo Router · TypeScript (`strict`) · NativeWind · Zustand · Axios · Zod · React Hook Form · `expo-secure-store`.
+Expo · React Native · React Navigation · TypeScript (`strict`) · NativeWind v4 · Zustand · Axios · Zod · React Hook Form · `expo-secure-store`.
 
 ## Instalação e execução (Expo Go)
 
