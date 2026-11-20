@@ -40,3 +40,12 @@ export function CalendarIcon({ color, size = 24 }: IconProps) {
     </Svg>
   );
 }
+
+export function CalendarPlusIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...common}>
+      <Rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <Path d="M3.5 10h17M8 3v4M16 3v4M12 13v4M10 15h4" />
+    </Svg>
+  );
+}

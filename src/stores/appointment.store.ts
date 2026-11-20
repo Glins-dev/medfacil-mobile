@@ -1,19 +1,14 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 
-import { api } from "@/services/api";
+import {
+  appointmentService,
+  type Appointment,
+  type AppointmentStatus,
+} from "@/services/appointment.service";
 import { useAuthStore } from "@/stores/auth.store";
 
-export type AppointmentStatus = "AGENDADO" | "CONFIRMADO";
-
-export interface Appointment {
-  id: string;
-  dateTime: string;
-  status: AppointmentStatus;
-  doctorId: string;
-  doctorName: string;
-  specialty: string | null;
-}
+export type { Appointment, AppointmentStatus };
 
 // Rede de seguranca para mudancas feitas por terceiros (medico ou admin).
 const STALE_AFTER_MS = 5 * 60 * 1000;
@@ -22,13 +17,6 @@ export type LoadStatus = "idle" | "loading" | "ready" | "error";
 
 const sortByDate = (list: Appointment[]) =>
   [...list].sort((a, b) => a.dateTime.localeCompare(b.dateTime));
-
-async function fetchAppointments(): Promise<Appointment[]> {
-  const { data } = await api.get<{ appointments: Appointment[] }>(
-    "/appointments"
-  );
-  return data.appointments;
-}
 
 interface AppointmentState {
   userId: string | null;
@@ -73,7 +61,8 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
       set({ status: "loading" });
     }
 
-    const promise = fetchAppointments()
+    const promise = appointmentService
+      .list()
       .then((appointments) => {
         if (useAuthStore.getState().user?.id !== userId) return;
         set({
@@ -164,14 +153,21 @@ export function useAppointments() {
   return {
     appointments: isOwn ? appointments : [],
     status: !isOwn || status === "idle" ? ("loading" as const) : status,
-    reload: () => {
-      void load({ force: true });
-    },
+    reload: () => load({ force: true }),
   };
 }
 
-// A Home so precisa da primeira consulta da lista (ja ordenada).
+// A Home retorna a primeira consulta futura ativa da lista (ja ordenada).
 export function useNextAppointment() {
   const { appointments, status, reload } = useAppointments();
-  return { appointment: appointments[0] ?? null, status, reload };
+  const nowIso = new Date().toISOString();
+  const next =
+    appointments.find(
+      (item) =>
+        item.status !== "CANCELADO" &&
+        item.status !== "CONCLUIDO" &&
+        item.dateTime >= nowIso
+    ) ?? null;
+
+  return { appointment: next, status, reload };
 }
