@@ -1,6 +1,10 @@
 import { api } from "@/services/api";
 
-export type AppointmentStatus = "AGENDADO" | "CONFIRMADO";
+export type AppointmentStatus =
+  | "AGENDADO"
+  | "CONFIRMADO"
+  | "CONCLUIDO"
+  | "CANCELADO";
 
 export interface Appointment {
   id: string;

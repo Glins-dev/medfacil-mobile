@@ -1,7 +1,7 @@
+export { DateBadge, type DateBadgeProps } from "./DateBadge";
 export { MainCard, type MainCardProps } from "./MainCard";
+export { NoticeCard, type NoticeCardProps } from "./NoticeCard";
 export {
-  DateBadge,
-  NoticeCard,
-  type DateBadgeProps,
-  type NoticeCardProps,
-} from "./NoticeCard";
+  QuickAccessCard,
+  type QuickAccessCardProps,
+} from "./QuickAccessCard";
