@@ -3,24 +3,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TAB_CONTENT_HEIGHT = 60;
 
-/**
- * Opções comuns das Bottom Tabs. O paddingBottom soma a área segura inferior
- * para a barra não ficar sob a barra de gestos / botões do Android.
- */
+// Opcoes comuns das Bottom Tabs somando a area segura inferior dos dispositivos.
 export function useTabScreenOptions(): BottomTabNavigationOptions {
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
 
   return {
     headerShown: false,
     tabBarActiveTintColor: "#0e706f",
     tabBarInactiveTintColor: "#5f6b6f",
     tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-    tabBarItemStyle: { minHeight: 44 },
+    tabBarItemStyle: { minHeight: 48 },
     tabBarStyle: {
       backgroundColor: "#ffffff",
       borderTopColor: "#d9d4c7",
-      height: TAB_CONTENT_HEIGHT + insets.bottom,
-      paddingBottom: insets.bottom + 6,
+      height: TAB_CONTENT_HEIGHT + bottomInset,
+      paddingBottom: bottomInset + 4,
       paddingTop: 6,
     },
   };

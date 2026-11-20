@@ -137,7 +137,7 @@ export function PatientHomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Sair da conta"
             accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-            className="min-h-[44px] min-w-[44px] justify-center rounded-lg px-2 active:opacity-70"
+            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
           >
             <Text className="text-sm font-semibold text-brand underline">
               {loggingOut ? "Saindo..." : "Sair"}
