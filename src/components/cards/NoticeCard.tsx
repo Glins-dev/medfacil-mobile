@@ -1,24 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
-export interface DateBadgeProps {
-  day: string | number;
-  month: string;
-}
-
-// Selo amarelo de data (ex.: 18 OUT) usado como destaque lateral no NoticeCard.
-export function DateBadge({ day, month }: DateBadgeProps) {
-  return (
-    <View className="h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-accent">
-      <Text className="text-2xl font-bold leading-none text-brand-dark">
-        {day}
-      </Text>
-      <Text className="mt-0.5 text-xs font-bold uppercase leading-none text-brand-dark">
-        {month}
-      </Text>
-    </View>
-  );
-}
+export { DateBadge, type DateBadgeProps } from "./DateBadge";
 
 export interface NoticeCardProps {
   leading?: ReactNode;
@@ -51,7 +34,7 @@ export function NoticeCard({
           {title}
         </Text>
         {subtitle ? (
-          <Text numberOfLines={1} className="text-sm text-muted">
+          <Text numberOfLines={2} className="text-sm text-muted">
             {subtitle}
           </Text>
         ) : null}
