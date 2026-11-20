@@ -8,6 +8,7 @@ export type AuthStackParamList = {
 export type PatientTabParamList = {
   PatientHome: undefined;
   PatientConsultations: undefined;
+  PatientSchedule: undefined;
   PatientAgenda: undefined;
 };
 

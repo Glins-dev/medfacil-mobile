@@ -301,7 +301,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
           <Text className="text-lg font-bold text-ink">{emptyTitle}</Text>
           <Text className="text-sm text-muted">
             {filter === "ALL" || filter === "UPCOMING"
-              ? "Agende uma nova consulta pela aba Agenda."
+              ? "Agende uma nova consulta em poucos passos."
               : "Consultas concluídas ou canceladas aparecerão aqui."}
           </Text>
         </View>
@@ -314,8 +314,8 @@ export function PatientConsultationsScreen({ navigation }: Props) {
           />
         ) : (
           <Button
-            label="Ir para Agenda"
-            onPress={() => navigation.navigate("PatientAgenda")}
+            label="Agendar consulta"
+            onPress={() => navigation.navigate("PatientSchedule")}
           />
         )}
       </View>

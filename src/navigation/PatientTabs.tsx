@@ -3,8 +3,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PatientConsultationsScreen } from "@/screens/PatientConsultationsScreen";
 import { PatientHomeScreen } from "@/screens/PatientHomeScreen";
+import { PatientScheduleScreen } from "@/screens/PatientScheduleScreen";
 import { createPlaceholderScreen } from "@/screens/PlaceholderScreen";
-import { CalendarIcon, HomeIcon, StethoscopeIcon } from "./icons";
+import {
+  CalendarIcon,
+  CalendarPlusIcon,
+  HomeIcon,
+  StethoscopeIcon,
+} from "./icons";
 import type { PatientTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<PatientTabParamList>();
@@ -24,7 +30,7 @@ export function PatientTabs() {
         tabBarActiveTintColor: "#0e706f",
         tabBarInactiveTintColor: "#5f6b6f",
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-        tabBarItemStyle: { minHeight: 44 },
+        tabBarItemStyle: { minHeight: 48 },
         tabBarStyle: {
           backgroundColor: "#ffffff",
           borderTopColor: "#d9d4c7",
@@ -48,6 +54,14 @@ export function PatientTabs() {
         options={{
           title: "Consultas",
           tabBarIcon: ({ color }) => <StethoscopeIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="PatientSchedule"
+        component={PatientScheduleScreen}
+        options={{
+          title: "Agendar",
+          tabBarIcon: ({ color }) => <CalendarPlusIcon color={color} />,
         }}
       />
       <Tab.Screen
