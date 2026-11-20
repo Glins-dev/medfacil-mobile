@@ -236,7 +236,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={`Filtrar por ${option.label}`}
               accessibilityState={{ selected: active }}
-              className={`min-h-[44px] flex-1 items-center justify-center rounded-xl border px-3 ${
+              className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border px-3 ${
                 active
                   ? "border-brand bg-brand"
                   : "border-line bg-white"

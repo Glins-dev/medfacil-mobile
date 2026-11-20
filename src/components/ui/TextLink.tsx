@@ -28,7 +28,7 @@ export function TextLink({
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={resolvedLabel}
-      className={`min-h-[44px] items-center justify-center px-2 active:opacity-70 ${className}`}
+      className={`min-h-[48px] items-center justify-center px-2 active:opacity-70 ${className}`}
       {...rest}
     >
       {children !== undefined ? (

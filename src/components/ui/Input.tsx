@@ -85,7 +85,7 @@ export function Input({
             accessibilityRole="button"
             accessibilityLabel={showPassword ? "Ocultar senha" : "Mostrar senha"}
             hitSlop={4}
-            className="absolute right-1 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg active:opacity-70"
+            className="absolute right-0 min-h-[48px] min-w-[48px] items-center justify-center rounded-lg active:opacity-70"
           >
             <EyeIcon off={showPassword} />
           </Pressable>
