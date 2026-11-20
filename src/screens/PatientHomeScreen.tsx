@@ -205,8 +205,8 @@ export function PatientHomeScreen({ navigation }: Props) {
             <NoticeCard
               title="Nenhuma consulta marcada"
               subtitle="Você ainda não tem consultas futuras agendadas."
-              detail="Toque para abrir suas consultas"
-              onPress={() => navigation.navigate("PatientConsultations")}
+              detail="Toque para agendar agora"
+              onPress={() => navigation.navigate("PatientSchedule")}
             />
           ) : null}
         </View>
@@ -220,7 +220,7 @@ export function PatientHomeScreen({ navigation }: Props) {
               label="Agendar Consulta"
               subtitle="Escolha especialidade e horário"
               icon={<CalendarPlusIcon />}
-              onPress={() => navigation.navigate("PatientAgenda")}
+              onPress={() => navigation.navigate("PatientSchedule")}
             />
             <QuickAccessCard
               className="flex-1"
