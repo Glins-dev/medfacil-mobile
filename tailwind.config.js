@@ -7,9 +7,10 @@ module.exports = {
       // Tokens oficiais extraídos de medfacil-pwa-main/src/index.css
       colors: {
         brand: {
-          DEFAULT: "#0e706f", // verde-petróleo: ações principais
-          dark: "#004959", // azul-petróleo escuro: títulos, logo
+          DEFAULT: "#0e706f", // verde-petroleo: acoes principais
+          dark: "#004959", // azul-petroleo escuro: titulos, logo
           light: "#29a4b4", // turquesa: foco, detalhes
+          cream: "#fef7e5", // creme: fundo das telas
         },
         accent: "#fec93f", // amarelo: destaques
         surface: "#fef7e5", // creme: fundo das telas
