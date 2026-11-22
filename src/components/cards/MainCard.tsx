@@ -55,7 +55,7 @@ export function MainCard({
               disabled={!onAction}
               accessibilityRole="button"
               accessibilityLabel={actionLabel}
-              className="mt-4 min-h-[44px] items-center justify-center rounded-full bg-accent px-6 py-2.5 active:opacity-85"
+              className="mt-4 min-h-[48px] items-center justify-center rounded-full bg-accent px-6 py-2.5 active:opacity-85"
             >
               <Text className="text-base font-bold text-brand-dark">
                 {actionLabel}
