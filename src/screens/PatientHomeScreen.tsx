@@ -1,97 +1,56 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
+  StatusBar,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import Svg, { Path, Rect } from "react-native-svg";
 
 import {
   Button,
+  DateBadge,
   MainCard,
+  Modal,
   NoticeCard,
   QuickAccessCard,
 } from "@/components";
+import { CLINIC_INFO } from "@/constants/clinic";
 import type { PatientTabParamList } from "@/navigation/types";
 import { authService } from "@/services/auth.service";
 import { useNextAppointment } from "@/stores/appointment.store";
 import { useAuthStore } from "@/stores/auth.store";
-import {
-  formatDayMonth,
-  formatTime,
-  formatWeekdayLong,
-  getPeriod,
-} from "@/utils/date";
+import { describeDate, formatTime, getClinicDateKey } from "@/utils/date";
+import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<PatientTabParamList, "PatientHome">;
 
-function CalendarPlusIcon() {
-  return (
-    <Svg
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#0e706f"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
-      <Path d="M3.5 10h17M8 3v4M16 3v4M12 13v4M10 15h4" />
-    </Svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <Svg
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#0e706f"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
-    </Svg>
-  );
-}
-
-function ClockCalendarIcon() {
-  return (
-    <Svg
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#0e706f"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
-      <Path d="M3.5 10h17M8 3v4M16 3v4M12 13v2.5l1.5 1" />
-    </Svg>
-  );
-}
-
-// Tela inicial do paciente com saudacao, proxima consulta e atalhos rapidos.
+// Tela inicial do paciente fiel ao design: hero de agendamento, proxima consulta e acesso rapido.
 export function PatientHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { appointment, status, reload } = useNextAppointment();
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const androidTopFallback =
+    Platform.OS === "android" && insets.top === 0
+      ? (StatusBar.currentHeight ?? 0)
+      : 0;
 
-  const firstName = user?.name.split(" ")[0] ?? "";
+  const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
+  const appointmentDateInfo = appointment
+    ? describeDate(getClinicDateKey(appointment.dateTime))
+    : null;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -117,11 +76,16 @@ export function PatientHomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-brand-cream"
+      edges={["top"]}
+      style={{
+        flex: 1,
+        backgroundColor: "#ffffff",
+        paddingTop: androidTopFallback,
+      }}
+      className="flex-1 bg-white"
     >
       <ScrollView
-        contentContainerClassName="gap-6 px-5 pb-8 pt-4"
+        contentContainerClassName="gap-6 px-5 pb-8 pt-3"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -134,6 +98,10 @@ export function PatientHomeScreen({ navigation }: Props) {
         }
       >
         <View className="flex-row items-center justify-between">
+          <Text className="text-2xl font-bold tracking-tight text-brand-dark">
+            Med<Text className="font-semibold italic text-brand">fácil</Text>
+          </Text>
+
           <Pressable
             onPress={() => {
               void handleLogout();
@@ -142,16 +110,12 @@ export function PatientHomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Sair da conta"
             accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
+            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-line bg-white px-4 active:opacity-70"
           >
-            <Text className="text-sm font-semibold text-brand underline">
+            <Text className="text-sm font-semibold text-brand">
               {loggingOut ? "Saindo..." : "Sair"}
             </Text>
           </Pressable>
-
-          <Text className="text-lg font-bold tracking-tight text-brand-dark">
-            Med<Text className="font-semibold italic text-brand">fácil</Text>
-          </Text>
         </View>
 
         <View>
@@ -166,11 +130,20 @@ export function PatientHomeScreen({ navigation }: Props) {
           </Text>
         </View>
 
+        <MainCard
+          title="Agendar consulta"
+          description="Escolha a especialidade e o melhor horário."
+          actionLabel="Começar"
+          imageSource={MEDICAL_IMAGES.doctor}
+          imageAlt="Ilustração de profissional médico"
+          onAction={() => navigation.navigate("PatientSchedule")}
+        />
+
         <View className="gap-3">
           <Text className="text-xl font-bold text-ink">Próxima consulta</Text>
 
           {status === "loading" ? (
-            <View className="min-h-[120px] items-center justify-center gap-2 rounded-3xl border border-line bg-white p-6">
+            <View className="min-h-[104px] items-center justify-center gap-2 rounded-2xl border border-line bg-white p-6">
               <ActivityIndicator size="small" color="#0e706f" />
               <Text className="text-sm text-muted">
                 Carregando sua próxima consulta...
@@ -193,16 +166,18 @@ export function PatientHomeScreen({ navigation }: Props) {
             </View>
           ) : null}
 
-          {status === "ready" && appointment ? (
-            <MainCard
+          {status === "ready" && appointment && appointmentDateInfo ? (
+            <NoticeCard
+              leading={
+                <DateBadge
+                  day={appointmentDateInfo.day}
+                  month={appointmentDateInfo.month}
+                />
+              }
               title={appointment.specialty ?? "Consulta"}
-              description={`${appointment.doctorName}\n${formatWeekdayLong(
-                appointment.dateTime
-              )}, ${formatDayMonth(appointment.dateTime)} · ${formatTime(
-                appointment.dateTime
-              )} (${getPeriod(appointment.dateTime)})`}
-              actionLabel="Ver consultas"
-              onAction={() => navigation.navigate("PatientConsultations")}
+              subtitle={appointment.doctorName}
+              detail={`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}`}
+              onPress={() => navigation.navigate("PatientConsultations")}
             />
           ) : null}
 
@@ -222,28 +197,39 @@ export function PatientHomeScreen({ navigation }: Props) {
           <View className="flex-row gap-3">
             <QuickAccessCard
               className="flex-1"
-              label="Agendar Consulta"
-              subtitle="Escolha especialidade e horário"
-              icon={<CalendarPlusIcon />}
-              onPress={() => navigation.navigate("PatientSchedule")}
+              variant="cream"
+              label="Minhas receitas"
+              imageSource={MEDICAL_IMAGES.prescription}
+              onPress={() => setComingSoonTitle("Minhas receitas")}
             />
             <QuickAccessCard
               className="flex-1"
-              label="Minhas Consultas"
-              subtitle="Histórico e status"
-              icon={<ListIcon />}
-              onPress={() => navigation.navigate("PatientConsultations")}
+              variant="cream"
+              label="Minha saúde"
+              imageSource={MEDICAL_IMAGES.heart}
+              onPress={() => setComingSoonTitle("Minha saúde")}
             />
           </View>
-
-          <QuickAccessCard
-            label="Agenda"
-            subtitle="Acompanhe seus horários marcados"
-            icon={<ClockCalendarIcon />}
-            onPress={() => navigation.navigate("PatientAgenda")}
-          />
         </View>
       </ScrollView>
+
+      <Modal
+        open={Boolean(comingSoonTitle)}
+        onClose={() => setComingSoonTitle(null)}
+        title={comingSoonTitle ?? "Funcionalidade em breve"}
+        closeLabel="Fechar aviso"
+      >
+        <View className="gap-4">
+          <Text className="text-base text-ink">
+            Funcionalidade em breve. Em atualizações futuras você poderá acessar{" "}
+            {comingSoonTitle?.toLowerCase()} diretamente por aqui.
+          </Text>
+          <Button
+            label="Entendi"
+            onPress={() => setComingSoonTitle(null)}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

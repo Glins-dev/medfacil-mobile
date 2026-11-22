@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   Text,
@@ -10,6 +11,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { Button, Modal, NoticeCard } from "@/components";
 import type { Specialty } from "@/services/catalog.service";
+import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
 export interface SpecialtyDropdownProps {
   specialties: Specialty[];
@@ -29,7 +31,7 @@ function ChevronDownIcon({ color }: { color: string }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke={color}
-      strokeWidth={2.2}
+      strokeWidth={2.4}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -55,7 +57,7 @@ function CheckIcon() {
   );
 }
 
-// Seletor dropdown acessivel de especialidades com modal nativo em lista.
+// Seletor dropdown acessivel de especialidades fiel ao design com rotulo interno e modal.
 export function SpecialtyDropdown({
   specialties,
   selectedSpecialty,
@@ -67,47 +69,41 @@ export function SpecialtyDropdown({
 }: SpecialtyDropdownProps) {
   const [open, setOpen] = useState(false);
 
-  const labelText = selectedSpecialty
+  const valueText = selectedSpecialty
     ? selectedSpecialty.name
     : loading
-      ? "Carregando especialidades..."
+      ? "Carregando..."
       : "Selecione uma especialidade";
 
   return (
-    <View className="gap-2">
-      <Text className="text-sm font-semibold text-ink">Especialidade</Text>
-
+    <View>
       <Pressable
         onPress={() => setOpen(true)}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={
           selectedSpecialty
-            ? `Especialidade selecionada: ${selectedSpecialty.name}. Toque para alterar`
+            ? `Especialidade: ${selectedSpecialty.name}. Toque para alterar`
             : "Selecionar especialidade"
         }
         accessibilityState={{ expanded: open, disabled }}
-        className={`min-h-[52px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-3 active:opacity-85 ${
-          selectedSpecialty ? "border-brand" : "border-line"
+        className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-2.5 active:opacity-85 ${
+          selectedSpecialty ? "border-brand" : "border-brand/70"
         } ${disabled ? "opacity-60" : ""}`}
       >
         <View className="min-w-0 flex-1">
+          <Text className="text-xs font-medium text-muted">Especialidade</Text>
           <Text
             numberOfLines={1}
-            className={`text-base font-semibold ${
+            className={`mt-0.5 text-lg font-bold ${
               selectedSpecialty ? "text-ink" : "text-muted"
             }`}
           >
-            {labelText}
+            {valueText}
           </Text>
-          {selectedSpecialty?.description ? (
-            <Text numberOfLines={1} className="mt-0.5 text-xs text-muted">
-              {selectedSpecialty.description}
-            </Text>
-          ) : null}
         </View>
 
-        <ChevronDownIcon color={selectedSpecialty ? "#0e706f" : "#5f6b6f"} />
+        <ChevronDownIcon color="#0e706f" />
       </Pressable>
 
       <Modal
@@ -122,7 +118,7 @@ export function SpecialtyDropdown({
           contentContainerClassName="gap-2.5 pb-2"
         >
           {loading ? (
-            <View className="min-h-[120px] items-center justify-center gap-3 rounded-2xl border border-line bg-brand-cream p-6">
+            <View className="min-h-[120px] items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-6">
               <ActivityIndicator size="small" color="#0e706f" />
               <Text className="text-sm text-muted">
                 Carregando especialidades...
@@ -131,7 +127,7 @@ export function SpecialtyDropdown({
           ) : null}
 
           {!loading && error ? (
-            <View className="gap-3 rounded-2xl border border-line bg-brand-cream p-4">
+            <View className="gap-3 rounded-2xl border border-line bg-surface p-4">
               <Text className="text-sm font-medium text-ink">
                 Não foi possível carregar as especialidades.
               </Text>
@@ -169,12 +165,18 @@ export function SpecialtyDropdown({
                         : specialty.name
                     }
                     accessibilityState={{ selected: isSelected }}
-                    className={`min-h-[52px] flex-row items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 active:opacity-85 ${
+                    className={`min-h-[56px] flex-row items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 active:opacity-85 ${
                       isSelected
                         ? "border-brand bg-brand/10"
                         : "border-line bg-white"
                     }`}
                   >
+                    <Image
+                      source={getSpecialtyImage(specialty.name)}
+                      resizeMode="contain"
+                      className="h-10 w-10 shrink-0"
+                    />
+
                     <View className="min-w-0 flex-1">
                       <Text className="text-base font-bold text-ink">
                         {specialty.name}
