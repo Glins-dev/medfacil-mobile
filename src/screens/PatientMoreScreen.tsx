@@ -34,6 +34,7 @@ export function PatientMoreScreen({ navigation }: Props) {
     Platform.OS === "android" && insets.top === 0
       ? (StatusBar.currentHeight ?? 0)
       : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -58,7 +59,10 @@ export function PatientMoreScreen({ navigation }: Props) {
       }}
       className="flex-1 bg-white"
     >
-      <ScrollView contentContainerClassName="flex-grow gap-6 px-5 pb-8 pt-3">
+      <ScrollView
+        contentContainerClassName="flex-grow gap-6 px-5 pt-3"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
+      >
         <View className="flex-row items-center justify-between">
           <Text
             accessibilityRole="header"

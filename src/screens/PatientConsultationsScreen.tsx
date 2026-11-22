@@ -208,6 +208,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
     Platform.OS === "android" && insets.top === 0
       ? (StatusBar.currentHeight ?? 0)
       : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const nowIso = new Date().toISOString();
 
@@ -359,7 +360,8 @@ export function PatientConsultationsScreen({ navigation }: Props) {
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View className="h-3" />}
-        contentContainerClassName="flex-grow px-5 pb-8 pt-3"
+        contentContainerClassName="flex-grow px-5 pt-3"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

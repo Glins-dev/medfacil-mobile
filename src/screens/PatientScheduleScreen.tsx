@@ -176,6 +176,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
     Platform.OS === "android" && insets.top === 0
       ? (StatusBar.currentHeight ?? 0)
       : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const [step, setStep] = useState<ScheduleStepNumber>(1);
   const [specialtyId, setSpecialtyId] = useState<string | null>(null);
@@ -444,7 +445,8 @@ export function PatientScheduleScreen({ navigation }: Props) {
       className="flex-1 bg-white"
     >
       <ScrollView
-        contentContainerClassName="flex-grow gap-5 px-5 pb-8 pt-3"
+        contentContainerClassName="flex-grow gap-5 px-5 pt-3"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-row items-center justify-between">

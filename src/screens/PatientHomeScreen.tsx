@@ -46,6 +46,7 @@ export function PatientHomeScreen({ navigation }: Props) {
     Platform.OS === "android" && insets.top === 0
       ? (StatusBar.currentHeight ?? 0)
       : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const appointmentDateInfo = appointment
@@ -85,7 +86,8 @@ export function PatientHomeScreen({ navigation }: Props) {
       className="flex-1 bg-white"
     >
       <ScrollView
-        contentContainerClassName="gap-6 px-5 pb-8 pt-3"
+        contentContainerClassName="gap-6 px-5 pt-3"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
