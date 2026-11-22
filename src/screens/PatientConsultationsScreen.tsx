@@ -2,23 +2,30 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
+  StatusBar,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { Button, DateBadge } from "@/components";
+import { CLINIC_INFO } from "@/constants/clinic";
 import type { PatientTabParamList } from "@/navigation/types";
 import type { Appointment, AppointmentStatus } from "@/services/appointment.service";
 import { useAppointments } from "@/stores/appointment.store";
 import {
   describeDate,
-  formatLongDate,
+  formatDayMonth,
   formatTime,
+  formatWeekdayLong,
   getClinicDateKey,
   getPeriod,
 } from "@/utils/date";
@@ -170,8 +177,14 @@ function ConsultationCard({
           <Text numberOfLines={1} className="text-sm text-muted">
             {item.doctorName}
           </Text>
-          <Text className="mt-0.5 text-sm font-semibold text-brand">
-            {formatLongDate(item.dateTime)} · {formatTime(item.dateTime)}
+          <Text className="text-xs text-muted">
+            {CLINIC_INFO.name} · {CLINIC_INFO.neighborhood}
+          </Text>
+          <Text className="mt-1 text-xs font-medium text-muted">
+            {formatWeekdayLong(item.dateTime)}
+          </Text>
+          <Text className="text-sm font-bold text-brand-dark">
+            {formatDayMonth(item.dateTime)} · {formatTime(item.dateTime)}
           </Text>
         </View>
       </View>
@@ -190,6 +203,11 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   const { appointments, status, reload } = useAppointments();
   const [filter, setFilter] = useState<ConsultationFilter>("ALL");
   const [refreshing, setRefreshing] = useState(false);
+  const insets = useSafeAreaInsets();
+  const androidTopFallback =
+    Platform.OS === "android" && insets.top === 0
+      ? (StatusBar.currentHeight ?? 0)
+      : 0;
 
   const nowIso = new Date().toISOString();
 
@@ -324,8 +342,13 @@ export function PatientConsultationsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-brand-cream"
+      edges={["top"]}
+      style={{
+        flex: 1,
+        backgroundColor: "#ffffff",
+        paddingTop: androidTopFallback,
+      }}
+      className="flex-1 bg-white"
     >
       <FlatList
         data={status === "ready" ? filteredAppointments : []}
@@ -336,7 +359,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View className="h-3" />}
-        contentContainerClassName="flex-grow px-5 pb-8 pt-4"
+        contentContainerClassName="flex-grow px-5 pb-8 pt-3"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

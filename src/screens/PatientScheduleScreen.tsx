@@ -1,20 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
+  Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Path } from "react-native-svg";
 
-import { Button } from "@/components";
+import { Button, Modal, NoticeCard } from "@/components";
 import {
   ScheduleStepIndicator,
   type ScheduleStepNumber,
 } from "@/components/schedule/ScheduleStepIndicator";
+import { SpecialtyDropdown } from "@/components/schedule/SpecialtyDropdown";
+import { CLINIC_INFO } from "@/constants/clinic";
 import type { PatientTabParamList } from "@/navigation/types";
 import { getApiErrorMessage, getApiErrorStatus } from "@/services/api";
 import {
@@ -23,18 +32,25 @@ import {
 } from "@/services/appointment.service";
 import {
   catalogService,
-  type Doctor,
+  type DoctorWithAvailability,
   type Specialty,
 } from "@/services/catalog.service";
-import { useAppointmentStore } from "@/stores/appointment.store";
+import {
+  findPatientAppointmentConflict,
+  useAppointments,
+  useAppointmentStore,
+} from "@/stores/appointment.store";
 import {
   describeDate,
+  formatDayMonth,
   formatLongDate,
   formatTime,
+  formatWeekdayLong,
   getPeriod,
   getUpcomingDates,
   type DayPeriod,
 } from "@/utils/date";
+import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<PatientTabParamList, "PatientSchedule">;
 type LoadStatus = "loading" | "ready" | "error";
@@ -42,7 +58,7 @@ type LoadStatus = "loading" | "ready" | "error";
 const DAYS_AHEAD = 14;
 const PERIOD_ORDER: DayPeriod[] = ["Manhã", "Tarde", "Noite"];
 
-// Carrega listas remotas de especialidades, medicos e horarios ignorando respostas atrasadas.
+// Carrega listas remotas ignorando respostas atrasadas quando a selecao muda.
 function useRemoteList<T>(load: (() => Promise<T[]>) | null, deps: unknown[]) {
   const [items, setItems] = useState<T[]>([]);
   const [status, setStatus] = useState<LoadStatus>("loading");
@@ -77,13 +93,6 @@ function useRemoteList<T>(load: (() => Promise<T[]>) | null, deps: unknown[]) {
   return { items, status, reload: () => setReloadKey((key) => key + 1) };
 }
 
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  const first = words[0]?.[0] ?? "";
-  const last = words.length > 1 ? words[words.length - 1][0] : "";
-  return (first + last).toUpperCase();
-}
-
 function ArrowLeftIcon() {
   return (
     <Svg
@@ -101,15 +110,32 @@ function ArrowLeftIcon() {
   );
 }
 
-function SuccessBadgeIcon() {
+function ChevronDownIcon({ color }: { color: string }) {
   return (
     <Svg
-      width={28}
-      height={28}
+      width={20}
+      height={20}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#0e706f"
+      stroke={color}
       strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ color = "#ffffff", size = 14 }: { color?: string; size?: number }) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.6}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -118,12 +144,22 @@ function SuccessBadgeIcon() {
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  isLast = false,
+}: {
+  label: string;
+  value: string;
+  isLast?: boolean;
+}) {
   return (
-    <View className="flex-row items-center justify-between gap-3 border-b border-line/70 py-3">
-      <Text className="w-28 text-xs font-semibold uppercase text-muted">
-        {label}
-      </Text>
+    <View
+      className={`flex-row items-center justify-between gap-4 py-3.5 ${
+        isLast ? "" : "border-b border-line/60"
+      }`}
+    >
+      <Text className="w-24 text-xs font-medium text-muted">{label}</Text>
       <Text className="flex-1 text-right text-sm font-bold text-ink">
         {value}
       </Text>
@@ -131,80 +167,102 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function LoadingState({ message }: { message: string }) {
-  return (
-    <View className="min-h-[140px] items-center justify-center gap-3 rounded-2xl border border-line bg-white p-6">
-      <ActivityIndicator size="small" color="#0e706f" />
-      <Text className="text-sm text-muted">{message}</Text>
-    </View>
-  );
-}
-
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <View className="gap-4 rounded-2xl border border-line bg-white p-5">
-      <Text className="text-sm font-medium text-ink">{message}</Text>
-      <Button label="Tentar novamente" variant="outline" onPress={onRetry} />
-    </View>
-  );
-}
-
-// Fluxo progressivo em 4 etapas: Especialidade, Medico, Data/Horario e Confirmacao.
+// Fluxo de agendamento em 3 etapas alinhado aos designs oficiais e regras reais de disponibilidade.
 export function PatientScheduleScreen({ navigation }: Props) {
+  const { appointments: patientAppointments, reload: reloadAppointments } =
+    useAppointments();
+  const insets = useSafeAreaInsets();
+  const androidTopFallback =
+    Platform.OS === "android" && insets.top === 0
+      ? (StatusBar.currentHeight ?? 0)
+      : 0;
+
   const [step, setStep] = useState<ScheduleStepNumber>(1);
   const [specialtyId, setSpecialtyId] = useState<string | null>(null);
-  const [doctorId, setDoctorId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
+  const [pickedDoctorId, setPickedDoctorId] = useState<string | null>(null);
+
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [timeModalOpen, setTimeModalOpen] = useState(false);
+  const [doctorModalOpen, setDoctorModalOpen] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [conflictRequiresNewSlot, setConflictRequiresNewSlot] = useState(false);
   const [createdAppointment, setCreatedAppointment] =
     useState<Appointment | null>(null);
 
-  const dates = useMemo(
-    () =>
-      getUpcomingDates(DAYS_AHEAD).map((value) => ({
-        value,
-        ...describeDate(value),
-      })),
-    []
-  );
+  const upcomingDateStrings = useMemo(() => getUpcomingDates(DAYS_AHEAD), []);
+  const todayDateKey = upcomingDateStrings[0] ?? "";
+  const tomorrowDateKey = upcomingDateStrings[1] ?? "";
 
   const specialties = useRemoteList<Specialty>(
     () => catalogService.listSpecialties(),
     []
   );
-  const doctors = useRemoteList<Doctor>(
-    specialtyId ? () => catalogService.listDoctors(specialtyId) : null,
-    [specialtyId]
-  );
-  const slots = useRemoteList<string>(
-    doctorId && date ? () => catalogService.listSlots(doctorId, date) : null,
-    [doctorId, date]
+
+  const doctors = useRemoteList<DoctorWithAvailability>(
+    specialtyId
+      ? () => catalogService.listAvailableDoctors(specialtyId, upcomingDateStrings)
+      : null,
+    [specialtyId, upcomingDateStrings]
   );
 
-  const selectedSpecialty = specialties.items.find(
-    (item) => item.id === specialtyId
-  );
-  const selectedDoctor = doctors.items.find((item) => item.id === doctorId);
-  const selectedDate = dates.find((item) => item.value === date);
+  const selectedSpecialty =
+    specialties.items.find((item) => item.id === specialtyId) ?? null;
 
-  // Agrupa horarios "HH:mm" por periodo usando o fuso America/Recife.
+  // Agrega todas as datas com ao menos um horario livre entre os medicos da especialidade.
+  const aggregatedDates = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const doctor of doctors.items) {
+      for (const entry of doctor.availableDates) {
+        if (entry.slots.length === 0) continue;
+        const slotSet = map.get(entry.date) ?? new Set<string>();
+        for (const slot of entry.slots) {
+          slotSet.add(slot);
+        }
+        map.set(entry.date, slotSet);
+      }
+    }
+
+    return [...map.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dateKey, slotSet]) => ({
+        date: dateKey,
+        slots: [...slotSet].sort((a, b) => a.localeCompare(b)),
+        ...describeDate(dateKey),
+      }));
+  }, [doctors.items]);
+
+  const selectedDateEntry =
+    aggregatedDates.find((item) => item.date === date) ?? null;
+
+  // Garante que a data e o horario continuem validos caso a disponibilidade seja recarregada.
+  useEffect(() => {
+    if (date && !aggregatedDates.some((item) => item.date === date)) {
+      setDate(null);
+      setTime(null);
+      setPickedDoctorId(null);
+    }
+  }, [aggregatedDates, date]);
+
+  useEffect(() => {
+    if (date && time && selectedDateEntry && !selectedDateEntry.slots.includes(time)) {
+      setTime(null);
+      setPickedDoctorId(null);
+    }
+  }, [date, selectedDateEntry, time]);
+
+  // Agrupa horarios "HH:mm" da data escolhida por periodo no fuso America/Recife.
   const groupedSlots = useMemo(() => {
-    if (!date || slots.items.length === 0) return [];
+    if (!date || !selectedDateEntry) return [];
     const buckets: Record<DayPeriod, string[]> = {
       Manhã: [],
       Tarde: [],
       Noite: [],
     };
-    for (const slot of slots.items) {
+    for (const slot of selectedDateEntry.slots) {
       const period = getPeriod(`${date}T${slot}:00-03:00`);
       buckets[period].push(slot);
     }
@@ -214,7 +272,56 @@ export function PatientScheduleScreen({ navigation }: Props) {
         items: buckets[period],
       })
     );
-  }, [date, slots.items]);
+  }, [date, selectedDateEntry]);
+
+  // Medicos da especialidade que possuem exatamente a data e horario selecionados livres.
+  const availableDoctorsForSlot = useMemo(() => {
+    if (!date || !time) return [];
+    return doctors.items.filter((doctor) =>
+      doctor.availableDates.some(
+        (entry) => entry.date === date && entry.slots.includes(time)
+      )
+    );
+  }, [date, doctors.items, time]);
+
+  const resolvedDoctor = useMemo(() => {
+    if (availableDoctorsForSlot.length === 0) return null;
+    return (
+      availableDoctorsForSlot.find((d) => d.id === pickedDoctorId) ??
+      availableDoctorsForSlot[0]
+    );
+  }, [availableDoctorsForSlot, pickedDoctorId]);
+
+  const conflictingSlotsInDay = useMemo(() => {
+    if (!date || !selectedDateEntry) return [];
+    return selectedDateEntry.slots
+      .map((slot) => ({
+        slot,
+        conflict: findPatientAppointmentConflict(
+          patientAppointments,
+          date,
+          slot
+        ),
+      }))
+      .filter(
+        (entry): entry is { slot: string; conflict: Appointment } =>
+          entry.conflict !== null
+      );
+  }, [date, patientAppointments, selectedDateEntry]);
+
+  const activeSelectionConflict = useMemo(() => {
+    if (!date || !time) return null;
+    return findPatientAppointmentConflict(patientAppointments, date, time);
+  }, [date, patientAppointments, time]);
+
+  const formatDayPrefix = useCallback(
+    (dateKey: string): string => {
+      if (dateKey === todayDateKey) return "Hoje · ";
+      if (dateKey === tomorrowDateKey) return "Amanhã · ";
+      return "";
+    },
+    [todayDateKey, tomorrowDateKey]
+  );
 
   const handleBack = () => {
     if (createdAppointment) {
@@ -230,46 +337,59 @@ export function PatientScheduleScreen({ navigation }: Props) {
     navigation.navigate("PatientHome");
   };
 
-  const handleSelectSpecialty = (id: string) => {
+  const handleSelectSpecialty = (specialty: Specialty) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
-    if (id !== specialtyId) {
-      setSpecialtyId(id);
-      setDoctorId(null);
+    if (specialty.id !== specialtyId) {
+      setSpecialtyId(specialty.id);
       setDate(null);
       setTime(null);
+      setPickedDoctorId(null);
     }
-    setStep(2);
   };
 
-  const handleSelectDoctor = (id: string) => {
+  const handleSelectDate = (nextDate: string) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
-    if (id !== doctorId) {
-      setDoctorId(id);
-      setDate(null);
+    if (nextDate !== date) {
+      setDate(nextDate);
       setTime(null);
+      setPickedDoctorId(null);
     }
-    setStep(3);
+    setDateModalOpen(false);
   };
 
-  const handleSelectDate = (value: string) => {
+  const handleSelectTime = (nextTime: string) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
-    if (value !== date) {
-      setDate(value);
-      setTime(null);
-    }
+    setTime(nextTime);
+    setPickedDoctorId(null);
+    setTimeModalOpen(false);
   };
 
   const handleConfirm = async () => {
-    if (!doctorId || !date || !time || submitting) return;
+    if (!resolvedDoctor || !date || !time || submitting) return;
+
+    const existingConflict = findPatientAppointmentConflict(
+      patientAppointments,
+      date,
+      time
+    );
+    if (existingConflict) {
+      setSubmitError("Você já possui uma consulta neste horário");
+      setConflictRequiresNewSlot(true);
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError("");
     setConflictRequiresNewSlot(false);
     try {
-      const created = await appointmentService.book({ doctorId, date, time });
+      const created = await appointmentService.book({
+        doctorId: resolvedDoctor.id,
+        date,
+        time,
+      });
       const store = useAppointmentStore.getState();
       if (store.status === "ready") {
         store.upsert(created);
@@ -278,16 +398,19 @@ export function PatientScheduleScreen({ navigation }: Props) {
       }
       setCreatedAppointment(created);
     } catch (error) {
+      const status = getApiErrorStatus(error);
       setSubmitError(
         getApiErrorMessage(
           error,
           "Não foi possível agendar a consulta. Tente novamente."
         )
       );
-      if (getApiErrorStatus(error) === 409) {
+      if (status === 409) {
         setTime(null);
+        setPickedDoctorId(null);
         setConflictRequiresNewSlot(true);
-        slots.reload();
+        doctors.reload();
+        void reloadAppointments();
       }
     } finally {
       setSubmitting(false);
@@ -297,9 +420,9 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const handleResetFlow = () => {
     setCreatedAppointment(null);
     setSpecialtyId(null);
-    setDoctorId(null);
     setDate(null);
     setTime(null);
+    setPickedDoctorId(null);
     setSubmitError("");
     setConflictRequiresNewSlot(false);
     setStep(1);
@@ -308,13 +431,20 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const selectedPeriod =
     date && time ? getPeriod(`${date}T${time}:00-03:00`) : null;
 
+  const specialtyImage = getSpecialtyImage(selectedSpecialty?.name);
+
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-brand-cream"
+      edges={["top"]}
+      style={{
+        flex: 1,
+        backgroundColor: "#ffffff",
+        paddingTop: androidTopFallback,
+      }}
+      className="flex-1 bg-white"
     >
       <ScrollView
-        contentContainerClassName="flex-grow gap-5 px-5 pb-8 pt-4"
+        contentContainerClassName="flex-grow gap-5 px-5 pb-8 pt-3"
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-row items-center justify-between">
@@ -322,22 +452,14 @@ export function PatientScheduleScreen({ navigation }: Props) {
             onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel={
-              createdAppointment
-                ? "Voltar para o início"
-                : step > 1
-                  ? "Voltar para etapa anterior"
-                  : "Voltar para o início"
+              createdAppointment || step === 1
+                ? "Voltar"
+                : "Voltar para etapa anterior"
             }
-            className="min-h-[48px] flex-row items-center gap-1.5 rounded-xl px-2 active:opacity-70"
+            className="min-h-[48px] flex-row items-center gap-1.5 rounded-xl px-1 active:opacity-70"
           >
             <ArrowLeftIcon />
-            <Text className="text-sm font-semibold text-brand">
-              {createdAppointment
-                ? "Início"
-                : step > 1
-                  ? "Etapa anterior"
-                  : "Início"}
-            </Text>
+            <Text className="text-sm font-semibold text-brand">Voltar</Text>
           </Pressable>
 
           <Text className="text-lg font-bold tracking-tight text-brand-dark">
@@ -347,46 +469,54 @@ export function PatientScheduleScreen({ navigation }: Props) {
 
         {createdAppointment ? (
           <View className="gap-5">
-            <View className="items-center gap-3 rounded-3xl border border-line bg-white p-6">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-brand/10">
-                <SuccessBadgeIcon />
+            <View className="items-center gap-3 rounded-3xl border border-line bg-surface p-6">
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-brand/15">
+                <CheckIcon color="#0e706f" size={28} />
               </View>
               <Text
                 accessibilityRole="header"
                 className="text-center text-2xl font-bold text-brand-dark"
               >
-                Consulta agendada
+                Consulta confirmada
               </Text>
               <Text className="text-center text-sm text-muted">
-                Seu horário foi reservado com sucesso.
+                Você poderá cancelar ou remarcar quando precisar.
               </Text>
             </View>
 
-            <View className="rounded-2xl border border-line bg-white px-4 py-1">
-              <SummaryRow
+            <View className="rounded-3xl border border-line bg-white px-4 py-1">
+              <DetailRow
                 label="Especialidade"
-                value={createdAppointment.specialty ?? selectedSpecialty?.name ?? "Consulta"}
+                value={
+                  createdAppointment.specialty ??
+                  selectedSpecialty?.name ??
+                  "Consulta"
+                }
               />
-              <SummaryRow
-                label="Médico"
+              <DetailRow
+                label="Profissional"
                 value={createdAppointment.doctorName}
               />
-              <SummaryRow
+              <DetailRow
                 label="Data"
-                value={formatLongDate(createdAppointment.dateTime)}
+                value={`${formatWeekdayLong(
+                  createdAppointment.dateTime
+                )}, ${formatDayMonth(createdAppointment.dateTime)}`}
               />
-              <View className="flex-row items-center justify-between gap-3 py-3">
-                <Text className="w-28 text-xs font-semibold uppercase text-muted">
-                  Horário
-                </Text>
-                <Text className="flex-1 text-right text-sm font-bold text-ink">
-                  {formatTime(createdAppointment.dateTime)} (
-                  {getPeriod(createdAppointment.dateTime)})
-                </Text>
-              </View>
+              <DetailRow
+                label="Horário"
+                value={formatTime(createdAppointment.dateTime)}
+              />
+              <DetailRow label="Local" value={CLINIC_INFO.name} />
+              <DetailRow label="Endereço" value={CLINIC_INFO.address} />
+              <DetailRow
+                label="Período"
+                value={getPeriod(createdAppointment.dateTime)}
+                isLast
+              />
             </View>
 
-            <View className="gap-3 pt-2">
+            <View className="gap-3 pt-1">
               <Button
                 label="Ver minhas consultas"
                 onPress={() => navigation.navigate("PatientConsultations")}
@@ -400,368 +530,387 @@ export function PatientScheduleScreen({ navigation }: Props) {
           </View>
         ) : (
           <>
-            <View>
-              <Text
-                accessibilityRole="header"
-                className="text-3xl font-bold text-ink"
-              >
-                Marcar consulta
-              </Text>
-              <Text className="mt-1 text-base text-muted">
-                Siga as etapas abaixo para escolher seu horário.
-              </Text>
-            </View>
-
-            <ScheduleStepIndicator currentStep={step} />
-
             {step === 1 ? (
-              <View className="gap-4">
-                <Text className="text-lg font-bold text-ink">
-                  Escolha a especialidade
+              <View className="flex-1 gap-5">
+                <View className="gap-2">
+                  <Text
+                    accessibilityRole="header"
+                    className="text-3xl font-bold leading-tight text-ink"
+                  >
+                    Escolha a especialidade
+                  </Text>
+                  <ScheduleStepIndicator currentStep={1} />
+                </View>
+
+                <Text className="text-base font-bold text-ink">
+                  Qual especialidade você procura?
                 </Text>
 
-                {specialties.status === "loading" ? (
-                  <LoadingState message="Carregando especialidades..." />
-                ) : null}
+                <SpecialtyDropdown
+                  specialties={specialties.items}
+                  selectedSpecialty={selectedSpecialty}
+                  loading={specialties.status === "loading"}
+                  error={specialties.status === "error"}
+                  onRetry={specialties.reload}
+                  onSelect={handleSelectSpecialty}
+                />
 
-                {specialties.status === "error" ? (
-                  <ErrorState
-                    message="Não foi possível carregar as especialidades."
-                    onRetry={specialties.reload}
-                  />
-                ) : null}
+                {selectedSpecialty ? (
+                  <View className="gap-2">
+                    <Text className="text-sm font-medium text-muted">
+                      Sua escolha
+                    </Text>
 
-                {specialties.status === "ready" &&
-                specialties.items.length === 0 ? (
-                  <View className="rounded-2xl border border-line bg-white p-5">
-                    <Text className="text-sm text-muted">
-                      Nenhuma especialidade disponível no momento.
+                    <View className="flex-row items-center gap-4 rounded-3xl border-2 border-accent bg-surface p-4">
+                      <Image
+                        source={specialtyImage}
+                        resizeMode="contain"
+                        className="h-16 w-16 shrink-0"
+                      />
+
+                      <View className="min-w-0 flex-1 items-start gap-1">
+                        <Text className="text-lg font-bold text-ink">
+                          {selectedSpecialty.name}
+                        </Text>
+                        {selectedSpecialty.description ? (
+                          <Text className="text-sm text-muted">
+                            {selectedSpecialty.description}
+                          </Text>
+                        ) : null}
+
+                        <View className="mt-1.5 flex-row items-center gap-1.5 rounded-full bg-brand-light px-3 py-1">
+                          <CheckIcon color="#ffffff" size={13} />
+                          <Text className="text-xs font-bold text-white">
+                            Escolhida
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <Text className="mt-1 text-xs text-muted">
+                      Você poderá alterar esta escolha antes de confirmar.
                     </Text>
                   </View>
                 ) : null}
 
-                {specialties.status === "ready" &&
-                specialties.items.length > 0 ? (
-                  <View className="gap-3">
-                    {specialties.items.map((specialty) => {
-                      const selected = specialty.id === specialtyId;
-                      return (
-                        <Pressable
-                          key={specialty.id}
-                          onPress={() => handleSelectSpecialty(specialty.id)}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            specialty.description
-                              ? `${specialty.name}. ${specialty.description}`
-                              : specialty.name
-                          }
-                          accessibilityState={{ selected }}
-                          className={`min-h-[56px] justify-center rounded-2xl border-2 p-4 active:opacity-85 ${
-                            selected
-                              ? "border-brand bg-brand/10"
-                              : "border-line bg-white"
-                          }`}
-                        >
-                          <Text className="text-base font-bold text-ink">
-                            {specialty.name}
-                          </Text>
-                          {specialty.description ? (
-                            <Text className="mt-1 text-sm text-muted">
-                              {specialty.description}
-                            </Text>
-                          ) : null}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : null}
-
-                {specialtyId ? (
-                  <Button label="Continuar" onPress={() => setStep(2)} />
-                ) : null}
+                <View className="mt-auto pt-4">
+                  <Button
+                    label="Continuar"
+                    disabled={!specialtyId}
+                    onPress={() => setStep(2)}
+                  />
+                </View>
               </View>
             ) : null}
 
             {step === 2 ? (
-              <View className="gap-4">
-                <View className="rounded-xl border border-brand/25 bg-white px-4 py-3">
-                  <Text className="text-xs font-semibold uppercase text-muted">
-                    Especialidade selecionada
+              <View className="flex-1 gap-5">
+                <View className="gap-2">
+                  <Text
+                    accessibilityRole="header"
+                    className="text-3xl font-bold leading-tight text-ink"
+                  >
+                    Escolha data e horário
                   </Text>
-                  <Text className="mt-0.5 text-base font-bold text-brand-dark">
-                    {selectedSpecialty?.name}
-                  </Text>
+                  <ScheduleStepIndicator currentStep={2} />
                 </View>
 
-                <Text className="text-lg font-bold text-ink">
-                  Escolha o profissional
+                <Text className="text-sm leading-relaxed text-muted">
+                  Selecione a data e o horário. O profissional e a unidade
+                  aparecem abaixo.
                 </Text>
 
                 {doctors.status === "loading" ? (
-                  <LoadingState message="Carregando profissionais..." />
+                  <View className="min-h-[140px] items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-6">
+                    <ActivityIndicator size="small" color="#0e706f" />
+                    <Text className="text-sm text-muted">
+                      Buscando datas e profissionais com horários livres...
+                    </Text>
+                  </View>
                 ) : null}
 
                 {doctors.status === "error" ? (
-                  <ErrorState
-                    message="Não foi possível carregar os profissionais."
-                    onRetry={doctors.reload}
-                  />
-                ) : null}
-
-                {doctors.status === "ready" && doctors.items.length === 0 ? (
-                  <View className="gap-3 rounded-2xl border border-line bg-white p-5">
-                    <Text className="text-sm text-muted">
-                      Nenhum profissional disponível para esta especialidade no
-                      momento.
+                  <View className="gap-3 rounded-2xl border border-line bg-surface p-4">
+                    <Text className="text-sm font-medium text-ink">
+                      Não foi possível carregar os horários disponíveis.
                     </Text>
                     <Button
-                      label="Escolher outra especialidade"
+                      label="Tentar novamente"
+                      variant="outline"
+                      onPress={doctors.reload}
+                    />
+                  </View>
+                ) : null}
+
+                {doctors.status === "ready" && aggregatedDates.length === 0 ? (
+                  <View className="gap-3">
+                    <NoticeCard
+                      title="Nenhum médico com agenda livre"
+                      subtitle="Os profissionais desta especialidade não possuem horários disponíveis nos próximos 14 dias."
+                      detail="Toque para escolher outra especialidade"
+                      onPress={() => setStep(1)}
+                    />
+                    <Button
+                      label="Alterar especialidade"
                       variant="outline"
                       onPress={() => setStep(1)}
                     />
                   </View>
                 ) : null}
 
-                {doctors.status === "ready" && doctors.items.length > 0 ? (
+                {doctors.status === "ready" && aggregatedDates.length > 0 ? (
                   <View className="gap-3">
-                    {doctors.items.map((doctor) => {
-                      const selected = doctor.id === doctorId;
-                      return (
-                        <Pressable
-                          key={doctor.id}
-                          onPress={() => handleSelectDoctor(doctor.id)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${doctor.name}, CRM ${doctor.crm}`}
-                          accessibilityState={{ selected }}
-                          className={`min-h-[64px] flex-row items-center gap-3 rounded-2xl border-2 p-4 active:opacity-85 ${
-                            selected
-                              ? "border-brand bg-brand/10"
-                              : "border-line bg-white"
+                    <Pressable
+                      onPress={() => setDateModalOpen(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        selectedDateEntry
+                          ? `Data selecionada: ${formatDayPrefix(
+                              selectedDateEntry.date
+                            )}${selectedDateEntry.weekdayLong}, ${selectedDateEntry.dayMonth}. Toque para alterar`
+                          : "Selecionar data"
+                      }
+                      className="min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 border-brand bg-white px-4 py-2.5 active:opacity-85"
+                    >
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-xs font-medium text-muted">
+                          Data
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          className={`mt-0.5 text-lg font-bold ${
+                            selectedDateEntry ? "text-ink" : "text-muted"
                           }`}
                         >
-                          <View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-dark">
-                            <Text className="text-sm font-bold text-white">
-                              {getInitials(doctor.name)}
-                            </Text>
+                          {selectedDateEntry
+                            ? `${formatDayPrefix(selectedDateEntry.date)}${
+                                selectedDateEntry.weekdayLong
+                              }, ${selectedDateEntry.dayMonth}`
+                            : "Selecione uma data"}
+                        </Text>
+                      </View>
+                      <ChevronDownIcon color="#0e706f" />
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setTimeModalOpen(true)}
+                      disabled={!date}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        time && selectedPeriod
+                          ? `Horário selecionado: ${time}, ${selectedPeriod}. Toque para alterar`
+                          : "Selecionar horário"
+                      }
+                      accessibilityState={{ disabled: !date }}
+                      className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-2.5 active:opacity-85 ${
+                        date ? "border-brand" : "border-line opacity-60"
+                      }`}
+                    >
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-xs font-medium text-muted">
+                          Horário
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          className={`mt-0.5 text-lg font-bold ${
+                            time ? "text-ink" : "text-muted"
+                          }`}
+                        >
+                          {time && selectedPeriod
+                            ? `${time} · ${selectedPeriod}`
+                            : date
+                              ? "Selecione um horário"
+                              : "Escolha uma data primeiro"}
+                        </Text>
+                      </View>
+                      <ChevronDownIcon color={date ? "#0e706f" : "#5f6b6f"} />
+                    </Pressable>
+
+                    {date && conflictingSlotsInDay.length > 0 ? (
+                      <View
+                        accessibilityRole="alert"
+                        className="rounded-2xl border border-danger/30 bg-danger/10 p-4"
+                      >
+                        <Text className="text-sm font-bold text-danger">
+                          Você já possui uma consulta neste horário
+                        </Text>
+                        <Text className="mt-1 text-xs text-ink">
+                          Horários bloqueados na sua agenda neste dia:{" "}
+                          {conflictingSlotsInDay
+                            .map((entry) => entry.slot)
+                            .join(", ")}
+                          .
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {activeSelectionConflict ? (
+                      <View
+                        accessibilityRole="alert"
+                        className="rounded-2xl border border-danger/30 bg-danger/10 p-4"
+                      >
+                        <Text className="text-sm font-bold text-danger">
+                          Você já possui uma consulta neste horário
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {resolvedDoctor && date && time ? (
+                      <View className="gap-2 pt-1">
+                        <Text className="text-sm font-medium text-muted">
+                          Profissional e unidade
+                        </Text>
+
+                        <View className="gap-3 rounded-3xl border-2 border-accent bg-surface p-4">
+                          <View className="flex-row items-center gap-4">
+                            <Image
+                              source={specialtyImage}
+                              resizeMode="contain"
+                              className="h-16 w-16 shrink-0"
+                            />
+
+                            <View className="min-w-0 flex-1 gap-1">
+                              <Text
+                                numberOfLines={1}
+                                className="text-lg font-bold text-ink"
+                              >
+                                {resolvedDoctor.name}
+                              </Text>
+                              <Text className="text-xs font-medium text-muted">
+                                {CLINIC_INFO.name} · CRM {resolvedDoctor.crm}
+                              </Text>
+
+                              <View className="mt-1 flex-row items-center gap-2.5">
+                                <View className="flex-row items-center gap-1 rounded-full bg-brand-light px-3 py-1">
+                                  <CheckIcon color="#ffffff" size={13} />
+                                  <Text className="text-xs font-bold text-white">
+                                    Disponível
+                                  </Text>
+                                </View>
+                                <Text className="text-xs font-medium text-muted">
+                                  {CLINIC_INFO.neighborhood}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
 
-                          <View className="min-w-0 flex-1">
-                            <Text
-                              numberOfLines={1}
-                              className="text-base font-bold text-ink"
-                            >
-                              {doctor.name}
-                            </Text>
-                            <Text className="mt-0.5 text-xs font-semibold text-muted">
-                              CRM {doctor.crm}
-                            </Text>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
+                          {availableDoctorsForSlot.length > 1 ? (
+                            <Button
+                              label={`Trocar profissional (${availableDoctorsForSlot.length} disponíveis)`}
+                              variant="outline"
+                              onPress={() => setDoctorModalOpen(true)}
+                            />
+                          ) : null}
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
                 ) : null}
 
-                {doctorId ? (
-                  <Button label="Continuar" onPress={() => setStep(3)} />
-                ) : null}
+                <View className="mt-auto pt-4">
+                  <Button
+                    label="Continuar"
+                    disabled={
+                      !date ||
+                      !time ||
+                      !resolvedDoctor ||
+                      Boolean(activeSelectionConflict)
+                    }
+                    onPress={() => setStep(3)}
+                  />
+                </View>
               </View>
             ) : null}
 
             {step === 3 ? (
-              <View className="gap-5">
-                <View className="rounded-xl border border-brand/25 bg-white px-4 py-3">
-                  <Text className="text-xs font-semibold uppercase text-muted">
-                    Profissional selecionado
-                  </Text>
-                  <Text className="mt-0.5 text-base font-bold text-brand-dark">
-                    {selectedDoctor?.name}
-                  </Text>
-                  {selectedDoctor ? (
-                    <Text className="text-xs font-medium text-muted">
-                      {selectedSpecialty?.name} · CRM {selectedDoctor.crm}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <View className="gap-3">
-                  <Text className="text-lg font-bold text-ink">
-                    Escolha a data
-                  </Text>
-
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerClassName="gap-2.5 py-1"
+              <View className="flex-1 gap-5">
+                <View className="gap-2">
+                  <Text
+                    accessibilityRole="header"
+                    className="text-3xl font-bold leading-tight text-ink"
                   >
-                    {dates.map((item) => {
-                      const selected = item.value === date;
-                      return (
-                        <Pressable
-                          key={item.value}
-                          onPress={() => handleSelectDate(item.value)}
-                          accessibilityRole="button"
-                          accessibilityLabel={item.long}
-                          accessibilityState={{ selected }}
-                          className={`min-h-[80px] min-w-[70px] items-center justify-center rounded-2xl border-2 px-3 py-2 active:opacity-85 ${
-                            selected
-                              ? "border-brand bg-brand"
-                              : "border-line bg-white"
-                          }`}
-                        >
-                          <Text
-                            className={`text-xs font-semibold capitalize ${
-                              selected ? "text-white" : "text-muted"
-                            }`}
-                          >
-                            {item.weekday}
-                          </Text>
-                          <Text
-                            className={`my-0.5 text-xl font-bold ${
-                              selected ? "text-white" : "text-ink"
-                            }`}
-                          >
-                            {item.day}
-                          </Text>
-                          <Text
-                            className={`text-xs font-semibold capitalize ${
-                              selected ? "text-white" : "text-muted"
-                            }`}
-                          >
-                            {item.month}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                <View className="gap-3">
-                  <Text className="text-lg font-bold text-ink">
-                    Escolha o horário
+                    Revise seu agendamento
                   </Text>
-
-                  {!date ? (
-                    <View className="rounded-2xl border border-dashed border-line bg-white p-5">
-                      <Text className="text-sm text-muted">
-                        Selecione uma data acima para visualizar os horários
-                        disponíveis.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {date && slots.status === "loading" ? (
-                    <LoadingState message="Buscando horários livres..." />
-                  ) : null}
-
-                  {date && slots.status === "error" ? (
-                    <ErrorState
-                      message="Não foi possível carregar os horários."
-                      onRetry={slots.reload}
-                    />
-                  ) : null}
-
-                  {date &&
-                  slots.status === "ready" &&
-                  slots.items.length === 0 ? (
-                    <View className="rounded-2xl border border-line bg-white p-5">
-                      <Text className="text-sm text-muted">
-                        Sem horários livres neste dia. Escolha outra data.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {date &&
-                  slots.status === "ready" &&
-                  groupedSlots.length > 0 ? (
-                    <View className="gap-4">
-                      {groupedSlots.map((group) => (
-                        <View key={group.period} className="gap-2">
-                          <Text className="text-sm font-bold text-brand-dark">
-                            {group.period}
-                          </Text>
-                          <View className="flex-row flex-wrap gap-2.5">
-                            {group.items.map((slot) => {
-                              const selected = slot === time;
-                              return (
-                                <Pressable
-                                  key={slot}
-                                  onPress={() => {
-                                    setTime(slot);
-                                    setSubmitError("");
-                                    setConflictRequiresNewSlot(false);
-                                  }}
-                                  accessibilityRole="button"
-                                  accessibilityLabel={`${slot}, ${group.period}`}
-                                  accessibilityState={{ selected }}
-                                  className={`min-h-[48px] min-w-[84px] items-center justify-center rounded-xl border-2 px-4 active:opacity-85 ${
-                                    selected
-                                      ? "border-brand bg-brand"
-                                      : "border-line bg-white"
-                                  }`}
-                                >
-                                  <Text
-                                    className={`text-sm font-bold ${
-                                      selected ? "text-white" : "text-ink"
-                                    }`}
-                                  >
-                                    {slot}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
+                  <ScheduleStepIndicator currentStep={3} />
                 </View>
 
-                <Button
-                  label="Continuar para resumo"
-                  disabled={!date || !time}
-                  onPress={() => setStep(4)}
-                />
-              </View>
-            ) : null}
-
-            {step === 4 ? (
-              <View className="gap-5">
-                <Text className="text-lg font-bold text-ink">
-                  Confirme os dados da consulta
+                <Text className="text-sm text-muted">
+                  Confira os dados antes de confirmar.
                 </Text>
 
-                <View className="rounded-2xl border border-line bg-white px-4 py-1">
-                  <SummaryRow
-                    label="Especialidade"
-                    value={selectedSpecialty?.name ?? ""}
-                  />
-                  <SummaryRow
-                    label="Médico"
+                <LinearGradient
+                  colors={["#dff3f4", "#fef7e5"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0.8 }}
+                  style={{
+                    borderRadius: 24,
+                    padding: 20,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View className="flex-row items-center justify-between gap-3">
+                    <View className="min-w-0 flex-1 items-start gap-1">
+                      <Text className="text-2xl font-bold text-ink">
+                        {selectedSpecialty?.name}
+                      </Text>
+                      <Text className="text-sm font-medium text-muted">
+                        {resolvedDoctor?.name}
+                      </Text>
+
+                      <View className="mt-3 rounded-full bg-brand-light/20 px-4 py-1.5">
+                        <Text className="text-xs font-bold text-brand-dark">
+                          Selecionado
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Image
+                      source={specialtyImage}
+                      resizeMode="contain"
+                      className="h-24 w-24 shrink-0"
+                    />
+                  </View>
+                </LinearGradient>
+
+                <View className="rounded-3xl border border-line bg-white px-5 py-1">
+                  <DetailRow
+                    label="Data"
                     value={
-                      selectedDoctor
-                        ? `${selectedDoctor.name} (CRM ${selectedDoctor.crm})`
+                      date
+                        ? `${formatLongDate(`${date}T12:00:00.000Z`)} (${
+                            selectedDateEntry?.weekdayLong ?? ""
+                          })`
                         : ""
                     }
                   />
-                  <SummaryRow
-                    label="Data"
-                    value={selectedDate?.long ?? ""}
+                  <DetailRow label="Horário" value={time ?? ""} />
+                  <DetailRow label="Local" value={CLINIC_INFO.name} />
+                  <DetailRow label="Endereço" value={CLINIC_INFO.address} />
+                  <DetailRow
+                    label="Período"
+                    value={selectedPeriod ?? ""}
+                    isLast
                   />
-                  <View className="flex-row items-center justify-between gap-3 py-3">
-                    <Text className="w-28 text-xs font-semibold uppercase text-muted">
-                      Horário
-                    </Text>
-                    <Text className="flex-1 text-right text-sm font-bold text-ink">
-                      {time && selectedPeriod
-                        ? `${time} (${selectedPeriod})`
-                        : ""}
-                    </Text>
-                  </View>
                 </View>
 
+                {activeSelectionConflict ? (
+                  <View
+                    accessibilityRole="alert"
+                    className="gap-3 rounded-2xl border border-danger/30 bg-danger/10 p-4"
+                  >
+                    <Text className="text-center text-sm font-bold text-danger">
+                      Você já possui uma consulta neste horário
+                    </Text>
+                    <Button
+                      label="Escolher outro horário"
+                      variant="outline"
+                      onPress={() => setStep(2)}
+                    />
+                  </View>
+                ) : null}
+
                 {submitError ? (
-                  <View className="gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4">
+                  <View className="gap-3 rounded-2xl border border-danger/30 bg-danger/10 p-4">
                     <Text
                       accessibilityRole="alert"
                       className="text-center text-sm font-medium text-danger"
@@ -772,35 +921,245 @@ export function PatientScheduleScreen({ navigation }: Props) {
                       <Button
                         label="Escolher outro horário"
                         variant="outline"
-                        onPress={() => setStep(3)}
+                        onPress={() => setStep(2)}
                       />
                     ) : null}
                   </View>
                 ) : null}
 
-                <View className="gap-3 pt-1">
+                <View className="mt-auto gap-2 pt-2">
                   <Button
                     label={
-                      submitting ? "Agendando..." : "Confirmar agendamento"
+                      submitting ? "Confirmando..." : "Confirmar consulta"
                     }
-                    disabled={!doctorId || !date || !time}
+                    disabled={
+                      !resolvedDoctor ||
+                      !date ||
+                      !time ||
+                      Boolean(activeSelectionConflict)
+                    }
                     loading={submitting}
                     onPress={() => {
                       void handleConfirm();
                     }}
                   />
-                  <Button
-                    label="Alterar data ou horário"
-                    variant="outline"
-                    disabled={submitting}
-                    onPress={() => setStep(3)}
-                  />
+                  <Text className="text-center text-xs text-muted">
+                    Você poderá cancelar ou remarcar depois.
+                  </Text>
                 </View>
               </View>
             ) : null}
           </>
         )}
       </ScrollView>
+
+      <Modal
+        open={dateModalOpen}
+        onClose={() => setDateModalOpen(false)}
+        title="Dias com horários livres"
+        closeLabel="Fechar lista de datas"
+      >
+        <ScrollView
+          className="max-h-[420px]"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="gap-2.5 pb-2"
+        >
+          {aggregatedDates.map((item) => {
+            const selected = item.date === date;
+            const slotsCount = item.slots.length;
+            return (
+              <Pressable
+                key={item.date}
+                onPress={() => handleSelectDate(item.date)}
+                accessibilityRole="button"
+                accessibilityLabel={`${formatDayPrefix(item.date)}${item.weekdayLong}, ${item.dayMonth}. ${slotsCount} ${slotsCount === 1 ? "horário disponível" : "horários disponíveis"}`}
+                accessibilityState={{ selected }}
+                className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 active:opacity-85 ${
+                  selected
+                    ? "border-brand bg-brand"
+                    : "border-line bg-white"
+                }`}
+              >
+                <View className="min-w-0 flex-1 gap-0.5">
+                  <Text
+                    className={`text-xs font-semibold ${
+                      selected ? "text-white/90" : "text-muted"
+                    }`}
+                  >
+                    {formatDayPrefix(item.date)}
+                    {item.weekdayLong}
+                  </Text>
+                  <Text
+                    className={`text-base font-bold ${
+                      selected ? "text-white" : "text-ink"
+                    }`}
+                  >
+                    {item.dayMonth}
+                  </Text>
+                </View>
+
+                <View
+                  className={`rounded-full px-3 py-1.5 ${
+                    selected ? "bg-white/20" : "bg-brand/10"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      selected ? "text-white" : "text-brand-dark"
+                    }`}
+                  >
+                    {slotsCount} {slotsCount === 1 ? "horário" : "horários"}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Modal>
+
+      <Modal
+        open={timeModalOpen}
+        onClose={() => setTimeModalOpen(false)}
+        title="Escolha o horário"
+        closeLabel="Fechar lista de horários"
+      >
+        <ScrollView
+          className="max-h-[440px]"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="gap-4 pb-2"
+        >
+          {selectedDateEntry ? (
+            <View className="rounded-xl border border-line bg-surface px-4 py-2.5">
+              <Text className="text-xs font-semibold text-muted">
+                {formatDayPrefix(selectedDateEntry.date)}
+                {selectedDateEntry.weekdayLong}
+              </Text>
+              <Text className="text-base font-bold text-brand-dark">
+                {selectedDateEntry.dayMonth}
+              </Text>
+            </View>
+          ) : null}
+
+          {date && conflictingSlotsInDay.length > 0 ? (
+            <View
+              accessibilityRole="alert"
+              className="rounded-xl border border-danger/30 bg-danger/10 p-3"
+            >
+              <Text className="text-xs font-bold text-danger">
+                Você já possui uma consulta neste horário:{" "}
+                {conflictingSlotsInDay.map((entry) => entry.slot).join(", ")}.
+              </Text>
+            </View>
+          ) : null}
+
+          {date && groupedSlots.length > 0
+            ? groupedSlots.map((group) => (
+                <View key={group.period} className="gap-2">
+                  <Text className="text-sm font-bold text-brand-dark">
+                    {group.period}
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2.5">
+                    {group.items.map((slot) => {
+                      const conflict = findPatientAppointmentConflict(
+                        patientAppointments,
+                        date,
+                        slot
+                      );
+                      const isConflict = Boolean(conflict);
+                      const selected = !isConflict && slot === time;
+
+                      return (
+                        <Pressable
+                          key={slot}
+                          disabled={isConflict}
+                          onPress={() => handleSelectTime(slot)}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isConflict
+                              ? `${slot}, indisponível. Você já possui uma consulta neste horário`
+                              : `${slot}, ${group.period}`
+                          }
+                          accessibilityState={{
+                            selected,
+                            disabled: isConflict,
+                          }}
+                          className={`min-h-[48px] min-w-[96px] items-center justify-center rounded-xl border-2 px-4 py-2 active:opacity-85 ${
+                            isConflict
+                              ? "border-danger/35 bg-danger/10 opacity-75"
+                              : selected
+                                ? "border-brand bg-brand"
+                                : "border-line bg-white"
+                          }`}
+                        >
+                          <Text
+                            className={`text-sm font-bold ${
+                              isConflict
+                                ? "text-danger line-through"
+                                : selected
+                                  ? "text-white"
+                                  : "text-ink"
+                            }`}
+                          >
+                            {slot}
+                          </Text>
+                          {isConflict ? (
+                            <Text className="text-[11px] font-semibold text-danger">
+                              Você já tem consulta
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))
+            : null}
+        </ScrollView>
+      </Modal>
+
+      <Modal
+        open={doctorModalOpen}
+        onClose={() => setDoctorModalOpen(false)}
+        title="Escolher profissional"
+        closeLabel="Fechar lista de profissionais"
+      >
+        <ScrollView
+          className="max-h-[380px]"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="gap-2.5 pb-2"
+        >
+          {availableDoctorsForSlot.map((doctor) => {
+            const selected = doctor.id === resolvedDoctor?.id;
+            return (
+              <Pressable
+                key={doctor.id}
+                onPress={() => {
+                  setPickedDoctorId(doctor.id);
+                  setDoctorModalOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`${doctor.name}, CRM ${doctor.crm}`}
+                accessibilityState={{ selected }}
+                className={`min-h-[56px] flex-row items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 active:opacity-85 ${
+                  selected
+                    ? "border-brand bg-brand/10"
+                    : "border-line bg-white"
+                }`}
+              >
+                <View className="min-w-0 flex-1">
+                  <Text className="text-base font-bold text-ink">
+                    {doctor.name}
+                  </Text>
+                  <Text className="text-xs text-muted">
+                    {CLINIC_INFO.name} · CRM {doctor.crm}
+                  </Text>
+                </View>
+                {selected ? <CheckIcon color="#0e706f" size={18} /> : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -10,6 +10,7 @@ export type PatientTabParamList = {
   PatientConsultations: undefined;
   PatientSchedule: undefined;
   PatientAgenda: undefined;
+  PatientMore: undefined;
 };
 
 export type DoctorTabParamList = {
