@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
-  StatusBar,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
-import { BrandLogo, Button, SendPrescriptionModal } from "@/components";
+import {
+  AppScreenHeader,
+  Button,
+  DateBadge,
+  SendPrescriptionModal,
+} from "@/components";
+import { StethoscopeIcon } from "@/navigation/icons";
 import type { DoctorTabParamList } from "@/navigation/types";
 import { getApiErrorMessage } from "@/services/api";
 import type { AppointmentStatus } from "@/services/appointment.service";
@@ -38,6 +39,16 @@ type Props = BottomTabScreenProps<DoctorTabParamList, "DoctorHome">;
 type LoadStatus = "loading" | "ready" | "error";
 
 const UPCOMING_LIMIT = 10;
+
+const styles = StyleSheet.create({
+  cardShadow: {
+    shadowColor: "#0e706f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+});
 
 const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = {
   AGUARDANDO: "Aguardando",
@@ -65,6 +76,35 @@ function resolveStatusLabel(appointment: DoctorAppointment): string {
   return ATTENDANCE_LABEL[appointment.attendanceStatus];
 }
 
+function resolveStatusBadgeStyle(
+  appointment: DoctorAppointment,
+  highlighted: boolean
+): { containerClass: string; textClass: string } {
+  if (appointment.status === "CANCELADO") {
+    return {
+      containerClass: "border border-danger/30 bg-danger/10",
+      textClass: "text-danger",
+    };
+  }
+
+  const isWaiting =
+    (appointment.attendanceStatus === "AGUARDANDO" &&
+      appointment.status === "AGENDADO") ||
+    appointment.attendanceStatus === "EM_ESPERA";
+
+  if (isWaiting) {
+    return {
+      containerClass: "border border-[#e5b12c] bg-[#F7C343]/35",
+      textClass: "text-[#004959]",
+    };
+  }
+
+  return {
+    containerClass: highlighted ? "bg-white" : "bg-[#dbf0ef]",
+    textClass: "text-[#0e706f]",
+  };
+}
+
 function formatWhenLabel(
   appointment: DoctorAppointment,
   todayKey: string
@@ -90,33 +130,43 @@ function DoctorAppointmentCard({
   highlighted?: boolean;
   onSendPrescription: () => void;
 }) {
+  const dateInfo = describeDate(getClinicDateKey(item.dateTime));
+  const statusStyle = resolveStatusBadgeStyle(item, highlighted);
+
   return (
     <View
-      className={`gap-3 rounded-2xl border p-4 ${
+      style={styles.cardShadow}
+      className={`gap-3.5 rounded-2xl border p-4 ${
         highlighted
-          ? "border-brand bg-[#dff4f2]"
-          : "border-line bg-white"
+          ? "border-[#b9e4e1] bg-[#dbf0ef]"
+          : "border-[#e6ecee] bg-white"
       }`}
     >
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-white">
-          <Text className="text-base font-bold text-brand-dark">
-            {formatTime(item.dateTime)}
-          </Text>
-        </View>
+      <View className="flex-row items-center gap-3.5">
+        <DateBadge day={dateInfo.day} month={dateInfo.month} />
 
-        <View className="min-w-0 flex-1 gap-0.5">
-          <Text numberOfLines={1} className="text-base font-bold text-ink">
+        <View className="min-w-0 flex-1 gap-1">
+          <Text
+            numberOfLines={1}
+            className="text-lg font-bold text-[#004959]"
+          >
             {item.patientName}
           </Text>
-          <Text numberOfLines={1} className="text-sm text-muted">
+          <Text numberOfLines={1} className="text-sm text-[#6b7280]">
             {item.reason ?? "Consulta"}
           </Text>
-          <Text className="text-xs font-semibold text-brand">
+          <Text className="text-sm font-semibold text-[#0e706f]">
             {highlighted
-              ? `${formatWhenLabel(item, todayKey)} · ${resolveStatusLabel(item)}`
-              : `${resolveStatusLabel(item)} · ${getPeriod(item.dateTime)}`}
+              ? formatWhenLabel(item, todayKey)
+              : `${formatTime(item.dateTime)} · ${getPeriod(item.dateTime)}`}
           </Text>
+          <View
+            className={`mt-0.5 self-start rounded-full px-2.5 py-0.5 ${statusStyle.containerClass}`}
+          >
+            <Text className={`text-xs font-bold ${statusStyle.textClass}`}>
+              {resolveStatusLabel(item)}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -130,7 +180,7 @@ function DoctorAppointmentCard({
   );
 }
 
-// Tela inicial do medico com proximas consultas e envio de receitas sem anexos.
+// Tela inicial do medico alinhada a identidade visual do app com proximas consultas e envio de receitas.
 export function DoctorHomeScreen(_props: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -145,10 +195,7 @@ export function DoctorHomeScreen(_props: Props) {
   const [sentNotice, setSentNotice] = useState("");
 
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const todayKey = getClinicDateKey(new Date().toISOString());
@@ -216,17 +263,17 @@ export function DoctorHomeScreen(_props: Props) {
   }, [appointments]);
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#f8fbfb",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-[#f8fbfb]"
-    >
+    <View className="flex-1 bg-[#f8fbfb]">
+      <AppScreenHeader
+        title={`Olá${firstName ? `, Dr(a). ${firstName}` : ""}`}
+        subtitle="Acompanhe seus atendimentos e prescrições."
+        icon={<StethoscopeIcon color="#0e706f" size={28} />}
+      />
+
       <ScrollView
-        contentContainerClassName="flex-grow gap-6 px-5 pb-8 pt-3"
+        className="flex-1"
+        contentContainerClassName="flex-grow gap-6 px-5 pt-6"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -238,63 +285,62 @@ export function DoctorHomeScreen(_props: Props) {
           />
         }
       >
-        <View className="flex-row items-center justify-between gap-3">
-          <Pressable
-            onPress={() => {
-              void handleLogout();
-            }}
-            disabled={loggingOut}
-            accessibilityRole="button"
-            accessibilityLabel="Sair da conta"
-            accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-line bg-white px-4 active:opacity-70"
-          >
-            <Text className="text-sm font-semibold text-brand">
-              {loggingOut ? "Saindo..." : "Sair"}
+        <View
+          style={styles.cardShadow}
+          className="gap-2 rounded-2xl border border-[#e6ecee] bg-white p-4"
+        >
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
+            <Text className="text-base font-bold text-[#004959]">
+              {todayLabel}
             </Text>
-          </Pressable>
-
-          <BrandLogo height={26} />
-        </View>
-
-        <View className="gap-1">
-          <Text
-            accessibilityRole="header"
-            className="text-3xl font-bold text-ink"
-          >
-            Olá{firstName ? `, Dr(a). ${firstName}` : ""}
+            {user?.crm ? (
+              <View className="rounded-full bg-[#dbf0ef] px-3 py-1">
+                <Text className="text-xs font-bold text-[#004959]">
+                  CRM {user.crm}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text className="text-sm text-[#6b7280]">
+            {status === "ready"
+              ? appointments.length === 1
+                ? "1 consulta agendada na fila de atendimento."
+                : `${appointments.length} consultas agendadas na fila de atendimento.`
+              : status === "loading"
+                ? "Carregando atendimentos do dia..."
+                : "Não foi possível atualizar o resumo."}
           </Text>
-          {user?.crm ? (
-            <Text className="text-sm font-bold text-brand-dark">
-              CRM {user.crm}
-            </Text>
-          ) : null}
-          <Text className="text-base text-muted">{todayLabel}</Text>
         </View>
 
         {sentNotice ? (
-          <View className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3">
-            <Text
-              accessibilityRole="alert"
-              className="text-sm font-semibold text-brand-dark"
-            >
+          <View
+            accessibilityRole="alert"
+            className="rounded-2xl border border-[#0e706f]/30 bg-[#dbf0ef] px-4 py-3.5"
+          >
+            <Text className="text-sm font-semibold text-[#004959]">
               {sentNotice}
             </Text>
           </View>
         ) : null}
 
         {status === "loading" ? (
-          <View className="min-h-[140px] items-center justify-center gap-3 rounded-3xl border border-line bg-white p-6">
+          <View
+            style={styles.cardShadow}
+            className="min-h-[140px] items-center justify-center gap-3 rounded-2xl border border-[#e6ecee] bg-white p-6"
+          >
             <ActivityIndicator size="large" color="#0e706f" />
-            <Text className="text-sm text-muted">
+            <Text className="text-sm text-[#6b7280]">
               Carregando suas próximas consultas...
             </Text>
           </View>
         ) : null}
 
         {status === "error" ? (
-          <View className="gap-4 rounded-2xl border border-line bg-white p-5">
-            <Text className="text-base font-semibold text-ink">
+          <View
+            style={styles.cardShadow}
+            className="gap-4 rounded-2xl border border-[#e6ecee] bg-white p-5"
+          >
+            <Text className="text-base font-semibold text-[#004959]">
               {errorMessage || "Não foi possível carregar suas consultas."}
             </Text>
             <Button
@@ -308,14 +354,14 @@ export function DoctorHomeScreen(_props: Props) {
         ) : null}
 
         {status === "ready" && appointments.length === 0 ? (
-          <View className="gap-4 rounded-2xl border border-line bg-white p-6">
-            <View className="gap-1">
-              <Text className="text-lg font-bold text-ink">
+          <View className="gap-3">
+            <View className="rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4">
+              <Text className="text-base font-bold text-[#004959]">
                 Nenhuma consulta agendada
               </Text>
-              <Text className="text-sm text-muted">
-                Você não tem consultas agendadas no momento. Puxe para baixo
-                para atualizar.
+              <Text className="mt-1 text-sm text-[#004959]/90">
+                Você não tem atendimentos futuros no momento. Puxe para baixo ou
+                atualize a lista.
               </Text>
             </View>
             <Button
@@ -330,7 +376,7 @@ export function DoctorHomeScreen(_props: Props) {
 
         {status === "ready" && nextAppointment ? (
           <View className="gap-3">
-            <Text className="text-xl font-bold text-ink">
+            <Text className="text-xl font-bold text-[#004959]">
               Próximo atendimento
             </Text>
 
@@ -348,13 +394,13 @@ export function DoctorHomeScreen(_props: Props) {
 
         {status === "ready" && groupedRemaining.length > 0 ? (
           <View className="gap-4">
-            <Text className="text-xl font-bold text-ink">
+            <Text className="text-xl font-bold text-[#004959]">
               Próximas consultas
             </Text>
 
             {groupedRemaining.map(([dayKey, items]) => (
               <View key={dayKey} className="gap-2.5">
-                <Text className="text-sm font-bold text-brand-dark">
+                <Text className="text-sm font-bold text-[#0e706f]">
                   {capitalizeFirst(describeDayHeading(dayKey))}
                 </Text>
 
@@ -375,6 +421,18 @@ export function DoctorHomeScreen(_props: Props) {
             ))}
           </View>
         ) : null}
+
+        <View className="mt-auto gap-3 pt-2">
+          <Button
+            label={loggingOut ? "Saindo..." : "Sair da conta"}
+            variant="danger-outline"
+            disabled={loggingOut}
+            accessibilityLabel="Sair da conta"
+            onPress={() => {
+              void handleLogout();
+            }}
+          />
+        </View>
       </ScrollView>
 
       <SendPrescriptionModal
@@ -387,6 +445,6 @@ export function DoctorHomeScreen(_props: Props) {
           );
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }

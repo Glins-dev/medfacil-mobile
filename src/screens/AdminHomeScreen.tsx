@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import {
+  AppScreenHeader,
   Button,
   MainCard,
-  NoticeCard,
   QuickAccessCard,
 } from "@/components";
 import { NewSpecialtyModal } from "@/components/modals/NewSpecialtyModal";
@@ -23,12 +25,43 @@ import { adminService, type AdminSpecialty } from "@/services/admin.service";
 import { getApiErrorMessage } from "@/services/api";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { getSpecialtyImage, MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<AdminTabParamList, "AdminHome">;
 type LoadStatus = "loading" | "ready" | "error";
 
 const byName = (a: AdminSpecialty, b: AdminSpecialty) =>
   a.name.localeCompare(b.name, "pt-BR");
+
+const styles = StyleSheet.create({
+  cardShadow: {
+    shadowColor: "#0e706f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+});
+
+function AdminPanelIcon() {
+  return (
+    <Svg
+      width={28}
+      height={28}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#0e706f"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Rect x="3.5" y="4" width="7.5" height="7.5" rx="2" />
+      <Rect x="13" y="4" width="7.5" height="7.5" rx="2" />
+      <Rect x="3.5" y="13.5" width="7.5" height="6.5" rx="2" />
+      <Rect x="13" y="13.5" width="7.5" height="6.5" rx="2" />
+    </Svg>
+  );
+}
 
 function SpecialtiesIcon() {
   return (
@@ -68,7 +101,7 @@ function DoctorPlusIcon() {
   );
 }
 
-// Tela inicial do administrador com gestao de especialidades e atalho para medicos.
+// Tela inicial do administrador alinhada a identidade visual do paciente.
 export function AdminHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -80,6 +113,9 @@ export function AdminHomeScreen({ navigation }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [specialtyModalOpen, setSpecialtyModalOpen] = useState(false);
   const [notice, setNotice] = useState("");
+
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const loadSpecialties = useCallback(async (isRefresh = false) => {
     if (!isRefresh) {
@@ -169,12 +205,17 @@ export function AdminHomeScreen({ navigation }: Props) {
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
 
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-brand-cream"
-    >
+    <View className="flex-1 bg-[#f8fbfb]">
+      <AppScreenHeader
+        title={firstName ? `Olá, ${firstName}` : "Painel Administrativo"}
+        subtitle="Gestão de especialidades e cadastro de médicos."
+        icon={<AdminPanelIcon />}
+      />
+
       <ScrollView
-        contentContainerClassName="flex-grow gap-6 px-5 pb-8 pt-4"
+        className="flex-1"
+        contentContainerClassName="flex-grow gap-6 px-5 pt-6"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -186,62 +227,30 @@ export function AdminHomeScreen({ navigation }: Props) {
           />
         }
       >
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => {
-              void handleLogout();
-            }}
-            disabled={loggingOut}
-            accessibilityRole="button"
-            accessibilityLabel="Sair da conta"
-            accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
-          >
-            <Text className="text-sm font-semibold text-brand underline">
-              {loggingOut ? "Saindo..." : "Sair"}
-            </Text>
-          </Pressable>
-
-          <Text className="text-lg font-bold tracking-tight text-brand-dark">
-            Med<Text className="font-semibold italic text-brand">fácil</Text>
-          </Text>
-        </View>
-
-        <View className="gap-0.5">
-          <Text
-            accessibilityRole="header"
-            className="text-3xl font-bold text-ink"
-          >
-            Olá{firstName ? `, ${firstName}` : ""}
-          </Text>
-          <Text className="text-base font-medium text-brand-dark">
-            Painel administrativo
-          </Text>
-          {user?.email ? (
-            <Text className="text-sm text-muted">{user.email}</Text>
-          ) : null}
-        </View>
-
         <MainCard
           title="Cadastrar médico"
           description="Crie o acesso profissional com CRM e especialidades vinculadas."
           actionLabel="Novo médico"
+          imageSource={MEDICAL_IMAGES.doctor}
+          imageAlt="Ilustração de profissional médico"
           onAction={() => navigation.navigate("AdminDoctors")}
         />
 
         <View className="gap-3">
-          <Text className="text-xl font-bold text-ink">Acesso rápido</Text>
+          <Text className="text-xl font-bold text-[#004959]">
+            Acesso rápido
+          </Text>
 
           <View className="flex-row gap-3">
             <QuickAccessCard
-              className="flex-1"
+              className="flex-1 border-[#e6ecee]"
               label="Especialidades"
               subtitle="Listar e criar novas"
               icon={<SpecialtiesIcon />}
               onPress={() => setSpecialtyModalOpen(true)}
             />
             <QuickAccessCard
-              className="flex-1"
+              className="flex-1 border-[#e6ecee]"
               label="Novo médico"
               subtitle="Vincular CRM e áreas"
               icon={<DoctorPlusIcon />}
@@ -252,45 +261,58 @@ export function AdminHomeScreen({ navigation }: Props) {
 
         <View className="gap-3">
           <View className="flex-row items-center justify-between gap-2">
-            <Text className="text-xl font-bold text-ink">
-              Especialidades
-              {status === "ready" ? ` (${specialties.length})` : ""}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-xl font-bold text-[#004959]">
+                Especialidades médicas
+              </Text>
+              {status === "ready" ? (
+                <View className="rounded-full bg-[#dbf0ef] px-2.5 py-0.5">
+                  <Text className="text-xs font-bold text-[#004959]">
+                    {specialties.length}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
             <Pressable
               onPress={() => setSpecialtyModalOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Adicionar especialidade"
-              className="min-h-[48px] justify-center px-2 active:opacity-70"
+              className="min-h-[48px] items-center justify-center rounded-xl border border-[#0e706f] bg-white px-4 active:opacity-80"
             >
-              <Text className="text-sm font-bold text-brand underline">
-                + Nova
-              </Text>
+              <Text className="text-sm font-bold text-[#0e706f]">+ Nova</Text>
             </Pressable>
           </View>
 
           {notice ? (
             <View
               accessibilityRole="alert"
-              className="rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3"
+              className="rounded-2xl border border-[#0e706f]/30 bg-[#dbf0ef] px-4 py-3.5"
             >
-              <Text className="text-sm font-semibold text-brand-dark">
+              <Text className="text-sm font-semibold text-[#004959]">
                 {notice}
               </Text>
             </View>
           ) : null}
 
           {status === "loading" ? (
-            <View className="min-h-[100px] items-center justify-center gap-2 rounded-2xl border border-line bg-white p-6">
+            <View
+              style={styles.cardShadow}
+              className="min-h-[100px] items-center justify-center gap-2 rounded-2xl border border-[#e6ecee] bg-white p-6"
+            >
               <ActivityIndicator size="small" color="#0e706f" />
-              <Text className="text-sm text-muted">
+              <Text className="text-sm text-[#6b7280]">
                 Carregando especialidades...
               </Text>
             </View>
           ) : null}
 
           {status === "error" ? (
-            <View className="gap-3 rounded-2xl border border-line bg-white p-5">
-              <Text className="text-sm font-medium text-ink">
+            <View
+              style={styles.cardShadow}
+              className="gap-3 rounded-2xl border border-[#e6ecee] bg-white p-5"
+            >
+              <Text className="text-sm font-semibold text-[#004959]">
                 {errorMessage || "Não foi possível carregar as especialidades."}
               </Text>
               <Button
@@ -304,25 +326,76 @@ export function AdminHomeScreen({ navigation }: Props) {
           ) : null}
 
           {status === "ready" && specialties.length === 0 ? (
-            <NoticeCard
-              title="Nenhuma especialidade cadastrada"
-              subtitle="Crie a primeira especialidade para cadastrar médicos."
-              detail="Toque para adicionar"
+            <Pressable
               onPress={() => setSpecialtyModalOpen(true)}
-            />
+              accessibilityRole="button"
+              accessibilityLabel="Nenhuma especialidade cadastrada. Toque para adicionar"
+              className="min-h-[72px] gap-1 rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4 active:opacity-85"
+            >
+              <Text className="text-base font-bold text-[#004959]">
+                Nenhuma especialidade cadastrada
+              </Text>
+              <Text className="text-sm text-[#004959]/90">
+                Toque aqui para criar a primeira especialidade e liberar o
+                cadastro de médicos.
+              </Text>
+            </Pressable>
           ) : null}
 
           {status === "ready" && specialties.length > 0 ? (
             <View className="gap-2.5">
               {specialties.map((item) => (
-                <NoticeCard
+                <View
                   key={item.id}
-                  title={item.name}
-                  subtitle={item.description ?? "Sem descrição"}
-                />
+                  style={styles.cardShadow}
+                  className="min-h-[72px] flex-row items-center gap-3.5 rounded-2xl border border-[#e6ecee] bg-white p-4"
+                >
+                  <View className="h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f6f8f9]">
+                    <Image
+                      source={getSpecialtyImage(item.name)}
+                      resizeMode="contain"
+                      style={{ width: 32, height: 32 }}
+                    />
+                  </View>
+
+                  <View className="min-w-0 flex-1 gap-0.5">
+                    <Text
+                      numberOfLines={1}
+                      className="text-base font-bold text-[#004959]"
+                    >
+                      {item.name}
+                    </Text>
+                    <Text numberOfLines={2} className="text-sm text-[#6b7280]">
+                      {item.description ?? "Sem descrição cadastrada"}
+                    </Text>
+                  </View>
+                </View>
               ))}
             </View>
           ) : null}
+        </View>
+
+        <View className="mt-auto gap-3 pt-2">
+          {user?.email ? (
+            <View className="rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] px-4 py-3">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                Conta administrativa
+              </Text>
+              <Text className="mt-0.5 text-sm font-bold text-[#004959]">
+                {user.email}
+              </Text>
+            </View>
+          ) : null}
+
+          <Button
+            label={loggingOut ? "Saindo..." : "Sair da conta"}
+            variant="danger-outline"
+            disabled={loggingOut}
+            accessibilityLabel="Sair da conta"
+            onPress={() => {
+              void handleLogout();
+            }}
+          />
         </View>
       </ScrollView>
 
@@ -331,6 +404,6 @@ export function AdminHomeScreen({ navigation }: Props) {
         onClose={() => setSpecialtyModalOpen(false)}
         onCreated={handleSpecialtyCreated}
       />
-    </SafeAreaView>
+    </View>
   );
 }

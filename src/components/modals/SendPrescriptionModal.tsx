@@ -1,7 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ScrollView, Text, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 
 import { Button, Input, Modal } from "@/components/ui";
 import {
@@ -14,6 +20,9 @@ import { prescriptionService } from "@/services/prescription.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { buildFallbackPatientId } from "@/stores/prescription.store";
 import type { Prescription } from "@/types/prescription";
+
+const ICON_RECEITAS =
+  require("../../../assets/icons/icone-minhas-receitas.png") as ImageSourcePropType;
 
 export interface SendPrescriptionModalProps {
   appointment: DoctorAppointment | null;
@@ -97,13 +106,22 @@ export function SendPrescriptionModal({
           showsVerticalScrollIndicator={false}
           contentContainerClassName="gap-4 pb-2"
         >
-          <View className="gap-0.5 rounded-2xl border border-line bg-surface p-4">
-            <Text className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Paciente
-            </Text>
-            <Text className="text-base font-bold text-brand-dark">
-              {appointment.patientName}
-            </Text>
+          <View className="flex-row items-center gap-3.5 rounded-2xl border border-[#b9e4e1] bg-[#dbf0ef] p-4">
+            <View className="h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white">
+              <Image
+                source={ICON_RECEITAS}
+                resizeMode="contain"
+                style={{ width: 32, height: 32 }}
+              />
+            </View>
+            <View className="min-w-0 flex-1 gap-0.5">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#0e706f]">
+                Paciente
+              </Text>
+              <Text className="text-base font-bold text-[#004959]">
+                {appointment.patientName}
+              </Text>
+            </View>
           </View>
 
           <Controller

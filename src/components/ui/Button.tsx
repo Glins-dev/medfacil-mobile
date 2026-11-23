@@ -13,6 +13,7 @@ export type ButtonVariant =
   | "secondary"
   | "outline"
   | "danger"
+  | "danger-outline"
   | "ghost";
 
 export interface ButtonProps extends Omit<PressableProps, "children"> {
@@ -27,16 +28,18 @@ export interface ButtonProps extends Omit<PressableProps, "children"> {
 
 const variantContainer: Record<Exclude<ButtonVariant, "primary">, string> = {
   secondary: "bg-brand-dark",
-  outline: "border-2 border-brand bg-white",
+  outline: "border-2 border-[#0e706f] bg-white",
   danger: "bg-danger",
+  "danger-outline": "border-2 border-danger bg-white",
   ghost: "bg-transparent",
 };
 
 const variantText: Record<ButtonVariant, string> = {
   primary: "text-white",
   secondary: "text-white",
-  outline: "text-brand-dark",
+  outline: "text-[#0e706f]",
   danger: "text-white",
+  "danger-outline": "text-danger",
   ghost: "text-brand-dark",
 };
 
@@ -62,7 +65,11 @@ export function Button({
       : undefined);
 
   const spinnerColor =
-    variant === "outline" || variant === "ghost" ? "#004959" : "#ffffff";
+    variant === "danger-outline"
+      ? "#d64545"
+      : variant === "outline" || variant === "ghost"
+        ? "#0e706f"
+        : "#ffffff";
 
   const content = (
     <View className="flex-row items-center justify-center gap-2">
@@ -97,7 +104,7 @@ export function Button({
         accessibilityRole="button"
         accessibilityLabel={resolvedLabel}
         accessibilityState={{ disabled: isDisabled, busy: loading }}
-        className={`overflow-hidden rounded-xl active:opacity-85 ${widthClass} ${disabledClass} ${className}`}
+        className={`overflow-hidden rounded-2xl active:opacity-85 ${widthClass} ${disabledClass} ${className}`}
         {...rest}
       >
         <LinearGradient
@@ -124,7 +131,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={resolvedLabel}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      className={`min-h-[48px] items-center justify-center rounded-xl px-6 py-3 active:opacity-85 ${widthClass} ${variantContainer[variant]} ${disabledClass} ${className}`}
+      className={`min-h-[48px] items-center justify-center rounded-2xl px-6 py-3 active:opacity-85 ${widthClass} ${variantContainer[variant]} ${disabledClass} ${className}`}
       {...rest}
     >
       {content}

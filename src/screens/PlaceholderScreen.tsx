@@ -1,26 +1,54 @@
-import { Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import type { ReactNode } from "react";
+import { ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** Tela provisória das abas ainda não implementadas. */
-export function createPlaceholderScreen(title: string) {
+import { AppScreenHeader } from "@/components";
+
+export interface PlaceholderScreenOptions {
+  subtitle?: string;
+  icon?: ReactNode;
+}
+
+// Tela provisoria das abas ainda nao implementadas no padrao visual do app.
+export function createPlaceholderScreen(
+  title: string,
+  options?: PlaceholderScreenOptions
+) {
   return function PlaceholderScreen() {
+    const insets = useSafeAreaInsets();
+    const scrollBottomPadding = 104 + insets.bottom;
+
     return (
-      <SafeAreaView
-        edges={["top", "left", "right"]}
-        className="flex-1 bg-surface"
-      >
-        <View className="flex-1 justify-center px-6">
-          <Text
-            accessibilityRole="header"
-            className="text-2xl font-bold text-brand-dark"
-          >
-            {title}
-          </Text>
-          <Text className="mt-2 text-base text-muted">
-            Esta tela será implementada em uma próxima issue do backlog.
-          </Text>
-        </View>
-      </SafeAreaView>
+      <View className="flex-1 bg-[#f8fbfb]">
+        <AppScreenHeader
+          title={title}
+          subtitle={options?.subtitle ?? "Em breve disponível no aplicativo."}
+          icon={options?.icon}
+        />
+
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="flex-grow gap-4 px-5 pt-6"
+          contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
+        >
+          <View className="gap-2 rounded-2xl border border-[#e6ecee] bg-white p-5">
+            <Text className="text-lg font-bold text-[#004959]">
+              Funcionalidade em desenvolvimento
+            </Text>
+            <Text className="text-sm leading-relaxed text-[#6b7280]">
+              Esta tela será disponibilizada nas próximas atualizações do
+              Medfácil.
+            </Text>
+          </View>
+
+          <View className="rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4">
+            <Text className="text-sm font-bold text-[#004959]">
+              Acompanhe suas consultas pela aba Início enquanto concluímos este
+              módulo.
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
     );
   };
 }

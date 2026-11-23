@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FloatingTabBar } from "@/components/ui";
 import { AdminHomeScreen } from "@/screens/AdminHomeScreen";
 import { AdminNewDoctorScreen } from "@/screens/AdminNewDoctorScreen";
 import { HomeIcon, StethoscopeIcon } from "./icons";
@@ -8,37 +8,23 @@ import type { AdminTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
-const TAB_BAR_BASE_HEIGHT = 60;
-
-// Navegacao inferior do administrador ajustada para a area segura dos dispositivos.
+// Navegacao inferior flutuante do administrador alinhada a identidade visual do paciente.
 export function AdminTabs() {
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 8);
-
   return (
     <Tab.Navigator
       initialRouteName="AdminHome"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: "#0e706f",
-        tabBarInactiveTintColor: "#5f6b6f",
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-        tabBarItemStyle: { minHeight: 48 },
-        tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "#d9d4c7",
-          height: TAB_BAR_BASE_HEIGHT + bottomInset,
-          paddingBottom: bottomInset + 4,
-          paddingTop: 6,
-        },
-      }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen
         name="AdminHome"
         component={AdminHomeScreen}
         options={{
           title: "Início",
-          tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+          tabBarAccessibilityLabel: "Painel administrativo",
+          tabBarIcon: ({ color, size }) => (
+            <HomeIcon color={color} size={size} />
+          ),
         }}
       />
       <Tab.Screen
@@ -46,7 +32,10 @@ export function AdminTabs() {
         component={AdminNewDoctorScreen}
         options={{
           title: "Médicos",
-          tabBarIcon: ({ color }) => <StethoscopeIcon color={color} />,
+          tabBarAccessibilityLabel: "Cadastro de médicos",
+          tabBarIcon: ({ color, size }) => (
+            <StethoscopeIcon color={color} size={size} />
+          ),
         }}
       />
     </Tab.Navigator>

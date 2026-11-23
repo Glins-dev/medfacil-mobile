@@ -50,20 +50,20 @@ export function Input({
   const borderClass = error
     ? "border-danger"
     : focused
-      ? "border-brand"
-      : "border-line";
+      ? "border-[#0e706f]"
+      : "border-[#d6e0e2]";
 
   return (
     <View className={`w-full gap-1.5 ${containerClassName}`}>
       {label ? (
-        <Text className="text-sm font-semibold text-ink">{label}</Text>
+        <Text className="text-sm font-semibold text-[#004959]">{label}</Text>
       ) : null}
 
       <View className="relative justify-center">
         <TextInput
           editable={editable}
           accessibilityLabel={accessibilityLabel ?? label}
-          placeholderTextColor="#5f6b6f"
+          placeholderTextColor="#6b7280"
           secureTextEntry={isPassword && !showPassword}
           onFocus={(event) => {
             setFocused(true);
@@ -73,7 +73,7 @@ export function Input({
             setFocused(false);
             onBlur?.(event);
           }}
-          className={`min-h-[48px] w-full rounded-xl border-2 bg-white px-4 text-base text-ink ${borderClass} ${
+          className={`min-h-[48px] w-full rounded-2xl border-2 bg-white px-4 text-base text-ink ${borderClass} ${
             isPassword ? "pr-14" : ""
           } ${!editable ? "opacity-60" : ""} ${inputClassName}`}
           {...rest}
@@ -97,7 +97,7 @@ export function Input({
           {error}
         </Text>
       ) : hint ? (
-        <Text className="text-xs text-muted">{hint}</Text>
+        <Text className="text-xs text-[#6b7280]">{hint}</Text>
       ) : null}
     </View>
   );
