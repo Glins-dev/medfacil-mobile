@@ -1,150 +1,164 @@
-# MedFácil Mobile
+# MedFácil
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-v0.3.0-0e706f)
-![Licença](https://img.shields.io/badge/licen%C3%A7a-ISC-004959)
-![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white)
-![React Native](https://img.shields.io/badge/React%20Native-61DAFB?logo=react&logoColor=black)
-![NativeWind](https://img.shields.io/badge/NativeWind-06B6D4?logo=tailwindcss&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+Aplicativo mobile nativo (Android e iOS) do **MedFácil**, sistema de agendamento e acompanhamento médico desenvolvido como migração completa do PWA (`medfacil-pwa-main`) para **React Native (Expo) + TypeScript + NativeWind v4**, integrado à API REST `medfacil-backend`, sem uso de `WebView`.
 
-Aplicativo mobile (Android e iOS) do **MedFácil**, sistema de agendamento de consultas médicas. É a migração do PWA (`medfacil-pwa-main`) para **Expo + React Native + TypeScript**, consumindo a mesma API REST do `medfacil-backend`, com foco em **acessibilidade** e **agendamento médico simples**.
+Projeto apresentado como entrega final da disciplina ministrada pelo **Prof. Icaro Ferreira** (Faculdade Senac).
 
-> **Status:** `v0.3.0`. Entregas do MVP implementadas para Paciente, Médico e Administrador, com persistência segura via `expo-secure-store`, testes unitários com Vitest e configuração de build no `eas.json`.
+## Integrantes do Grupo
 
-## Perfis
+- Guilherme Lins Monteiro De Melo
+- Jamesson Ferreira
+- Arthur Miguel
 
-| Perfil | O que faz |
+## Perfis e Funcionalidades Implementadas
+
+| Perfil | Funcionalidades Principais |
 | :--- | :--- |
-| Paciente | Cadastra-se, visualiza consultas, agenda em 4 etapas, reagenda e cancela consultas |
-| Médico | Consulta próximas consultas agrupadas por dia no fuso `America/Recife` |
-| Administrador | Gerencia especialidades e cadastra médicos com CRM |
+| **Paciente** | Login por CPF e senha, autocadastro completo (CPF, telefone, data de nascimento, sexo e endereço), tela inicial com próxima consulta, listagem e filtros de consultas (`FlatList`), detalhes da consulta com atalho **"Veja a melhor rota"** no Google Maps, agendamento em 3 etapas com revisão, confirmação de presença, reagendamento, cancelamento, **Minhas receitas**, **Minha saúde** (pré-prontuário com cálculo de IMC) e Perfil (`Dados pessoais`, `Notificações`, `Acessibilidade`, `Ajuda`) |
+| **Médico** | Fila de atendimentos na tela inicial, envio de receitas médicas (`SendPrescriptionModal`), visualização clínica do pré-prontuário do paciente (`PatientPreChartModal` com IMC, tipo sanguíneo, alergias em destaque, comorbidades e histórico), aba **Hospitais** vinculados com especialidades resolvidas e aba **Agenda** estilo Google Agenda com visões **Dia**, **Semana** e **Mês** |
+| **Administrador** | Painel administrativo com cadastro de especialidades, listagem e exclusão de médicos em cascata, cadastro de novos médicos com CRM e vínculo de especialidades, gestão de hospitais com vínculo de médicos compatíveis e gestão de horários disponíveis na agenda |
 
-## Funcionalidades
+## Recursos Obrigatórios (Etapa 2) e Evidências no Código
 
-| Funcionalidade | RF / RNF | PWA / API (referência) | Mobile (`v0.3.0`) |
-| :--- | :--- | :--- | :--- |
-| Login por CPF e senha | RF01 | Implementado | Implementada (`v0.3.0`) |
-| Redirecionamento e proteção por role | RF02 | Implementado | Implementada (`v0.3.0`) |
-| Logout | RF03 | Implementado | Implementada (`v0.3.0`) |
-| Cadastro de paciente (CPF validado) | RF04 | Implementado | Implementada (`v0.3.0`) |
-| Home do paciente (próxima consulta) | RF05 | Implementado | Implementada (`v0.3.0`) |
-| Agendamento em 4 etapas + revisão | RF06 | Implementado | Implementada (`v0.3.0`) |
-| Listar agendamentos | RF07 | Implementado | Implementada (`v0.3.0`) |
-| Reagendar consulta | RF08 | API pronta; fluxo parcial no PWA | Implementada (`v0.3.0`) |
-| Cancelar consulta | RF09 | Implementado | Implementada (`v0.3.0`) |
-| Agenda do médico (próximas consultas por dia) | RF10 | Implementado (sem filtro por período) | Implementada (`v0.3.0`) |
-| Gestão de especialidades | RF11 | Implementado | Implementada (`v0.3.0`) |
-| Cadastro de médico com CRM | RF12 | Implementado | Implementada (`v0.3.0`) |
-| Sessão segura (`expo-secure-store`) | RNF01 | Usa `localStorage` | Implementada (`v0.3.0`) |
-| Acessibilidade (alvos >= 48px e rótulos) | RNF03 / RNF04 | Parcial | Implementada (`v0.3.0`) |
-| Testes unitários (utils e schemas) | Qualidade | N/A | Implementada (`v0.3.0`) |
-| Configuração EAS Build (APK e produção) | Portabilidade | N/A | Implementada (`v0.3.0`) |
-| Esqueci minha senha | N/A | Apenas visual | Fora do escopo |
-| Receitas, prontuário, exames, notificações | N/A | Placeholders | Fora do escopo |
-| Agenda geral, bloqueios e indicadores admin | N/A | Dados fictícios | Fora do escopo |
+| Categoria | Recurso | Evidência no Código |
+| :--- | :--- | :--- |
+| **Navegação** | `Stack Navigator` (`createNativeStackNavigator`) | `src/navigation/AuthStack.tsx`, `src/navigation/PatientStack.tsx` |
+| **Navegação** | `Bottom Tabs` (`createBottomTabNavigator`) + barra flutuante customizada | `src/navigation/PatientTabs.tsx`, `src/navigation/DoctorTabs.tsx`, `src/navigation/AdminTabs.tsx`, `src/components/ui/FloatingTabBar.tsx` |
+| **Animações e Transições** | `Slide` em modais, transições nativas de pilha/abas e rolagem animada no foco de inputs | `src/components/ui/Modal.tsx` (`animationType="slide"`), `src/navigation/*.tsx`, `scrollTo({ animated: true })` nos formulários |
+| **Componentes Nativos e Estado** | `Modal` | 20 ocorrências em 16 arquivos (`src/components/ui/Modal.tsx`, modais clínicos, dropdowns e confirmações) |
+| **Componentes Nativos e Estado** | `FlatList` | `src/screens/PatientConsultationsScreen.tsx`, `src/screens/PatientPrescriptionsScreen.tsx` |
+| **Componentes Nativos e Estado** | `ScrollView` | 25 arquivos (`LoginScreen.tsx`, `RegisterScreen.tsx`, `PatientScheduleScreen.tsx`, `PatientHealthScreen.tsx`, `DoctorScheduleScreen.tsx`, `AdminHomeScreen.tsx` e demais telas) |
+| **Componentes Nativos e Estado** | `Pressable` (substituto moderno recomendado para `TouchableOpacity`) | 30 arquivos (`FeatureCard.tsx`, `MainCard.tsx`, `Button.tsx`, `FloatingTabBar.tsx`, `LogoutButton.tsx`, cards e listas interativas) |
+| **Componentes Nativos e Estado** | `TextInput` | `src/components/ui/Input.tsx` (consumido em Login, Cadastro, Minha saúde, Painel Admin e envio de receitas) |
+| **Componentes Nativos e Estado** | `useState` e gerenciamento global | 22 arquivos com `useState`, além de stores Zustand (`src/stores/`) e formulários controlados com `react-hook-form` + `zod` |
+| **Ícones** | `Icons` vetoriais em SVG (`react-native-svg`) e ilustrações médicas locais | `src/navigation/icons.tsx`, ícones em modais/UI (`21` arquivos com `react-native-svg`) e `assets/icons/` |
 
-## Stack
+## Diferenciais Implementados (Desafio Extra)
 
-Expo · React Native · React Navigation · TypeScript (`strict`) · NativeWind v4 · Zustand · Axios · Zod · React Hook Form · `expo-secure-store` · Vitest · EAS Build.
+- **Acessibilidade (WCAG):** áreas de toque mínimas de `48px` (com `hitSlop` calculado em componentes compactos como `LogoutButton` e botão de senha em `Input`), `accessibilityRole`, `accessibilityLabel`, `accessibilityState`, alto contraste na paleta institucional (`#004959`, `#0e706f`, `#dff4f2`, `#F7C343`) e feedback explícito de erro (`accessibilityRole="alert"`).
+- **Geolocalização e Rotas no Google Maps:** utilitário puro `src/utils/maps.ts` (`buildGoogleMapsRouteUrl` e `openBestRoute`) integrado ao botão **"Veja a melhor rota"** em `PatientAppointmentDetailsScreen.tsx`, ligando o endereço do paciente ao endereço real da clínica/hospital com fallback automático para localização atual do dispositivo.
+- **Pré-Prontuário ("Minha saúde") e Leitura Clínica Médica:** formulário completo validado com Zod (`src/schemas/healthProfile.schema.ts`), cálculo de IMC (`calculateBmi`), persistência local segura (`expo-secure-store`) e modal clínico `PatientPreChartModal.tsx` com alertas visuais para alergias e histórico.
+- **Agenda Médica Estilo Google Agenda:** visões por **Dia**, **Semana** e **Mês** no fuso `America/Recife` (`src/utils/calendar.ts` e `DoctorScheduleScreen.tsx`), distribuição em colunas para horários simultâneos, marcador de hora atual e atalhos para pré-prontuário e envio de receitas.
+- **Gestão Administrativa Completa e Segurança:** cadastro de hospitais, compatibilidade por especialidade, horários avulsos integrados ao agendamento do paciente, persistência criptografada em `expo-secure-store` e suíte automatizada com **11 arquivos de teste (65 testes unitários)** em Vitest + TypeScript `strict`.
 
-## Instalação e execução (Expo Go)
+## Stack Tecnológica
 
-**Pré-requisitos:** Node.js 20+ (`.nvmrc` do projeto web), npm, app **Expo Go** no celular (Android/iOS) e a API `medfacil-backend` em execução (`npm run dev`, porta `3000`).
+- **Framework Mobile:** React Native `0.88.1` + Expo `~58.0` (`expo-linear-gradient`, `expo-secure-store`, `expo-status-bar`)
+- **Linguagem e Estilização:** TypeScript (`strict`) + NativeWind v4 (`tailwindcss`)
+- **Navegação:** `@react-navigation/native`, `@react-navigation/native-stack`, `@react-navigation/bottom-tabs`, `react-native-safe-area-context`
+- **Estado, API e Validação:** Zustand, Axios, React Hook Form, Zod v4 (`@hookform/resolvers`)
+- **Testes:** Vitest
 
-```bash
-# 1. Clonar e entrar na pasta
-git clone <url-do-repositorio>
-cd medfacil-mobile
+## Estrutura de Pastas
 
-# 2. Instalar dependências
-npm install
-
-# 3. Configurar a URL da API
-cp .env.example .env
-# edite EXPO_PUBLIC_API_URL, ex.: http://192.168.0.10:3000/api/v1
-
-# 4. Iniciar o Metro
-npx expo start
+```text
+medfacil-mobile/
+├── assets/icons/          # Logo da marca e ilustrações médicas 3D
+├── docs/                  # Documentação de requisitos, casos de uso e backlog
+├── src/
+│   ├── __tests__/         # 11 suítes de testes unitários (65 testes)
+│   ├── components/        # UI reutilizável (ui/, cards/, modals/, doctor/, schedule/)
+│   ├── constants/         # Dados institucionais padrão da clínica
+│   ├── navigation/        # RootNavigator, Stacks, Tabs, ícones e tipagens
+│   ├── schemas/           # Schemas Zod (autenticação, receitas, admin, pré-prontuário)
+│   ├── screens/           # Telas nativas dos fluxos Autenticação, Paciente, Médico e Admin
+│   ├── services/          # Cliente HTTP Axios e camadas de serviço REST/locais
+│   ├── stores/            # Stores Zustand (sessão, agendamentos, admin, receitas, saúde)
+│   ├── types/             # Contratos TypeScript
+│   └── utils/             # Datas America/Recife, calendário, CPF, máscaras, mapas e especialidades
+├── app.json
+├── package.json
+└── README.md
 ```
 
-5. Abra o **Expo Go** e escaneie o QR Code (celular e computador na mesma rede Wi-Fi).
-6. Para testar login, use um usuário do `seed` do backend (`npm run db:seed` em `medfacil-backend`).
+## Instalação e Execução Passo a Passo (Expo)
 
-| Ambiente | `EXPO_PUBLIC_API_URL` |
-| :--- | :--- |
-| Dispositivo físico (Expo Go) | `http://<IP-da-sua-máquina>:3000/api/v1` |
-| Emulador Android | `http://10.0.2.2:3000/api/v1` |
-| Simulador iOS | `http://localhost:3000/api/v1` |
+### Pré-requisitos
 
-> `localhost` **não** funciona em dispositivo físico. Em produção use HTTPS. O backend precisa permitir a origem via `CORS_ORIGIN` quando aplicável.
+- **Node.js 20+** e **npm**
+- App **Expo Go** instalado no celular (Android ou iOS) ou emulador configurado
+- API `medfacil-backend` em execução na porta `3000` (com banco populado via `npm run db:seed`, se aplicável)
 
-## Testes automatizados e verificação de tipos
+### Passos
+
+1. **Clonar o repositório e acessar a pasta do aplicativo:**
+
+   ```bash
+   git clone <url-do-repositorio>
+   cd medfacil-mobile
+   ```
+
+2. **Instalar as dependências:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configurar a variável de ambiente da API (`.env`):**
+
+   Copie o arquivo de exemplo para criar o `.env`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   No PowerShell (Windows), você também pode usar:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   Edite o arquivo `.env` e defina `EXPO_PUBLIC_API_URL` de acordo com o ambiente de execução:
+
+   | Ambiente | Valor de `EXPO_PUBLIC_API_URL` |
+   | :--- | :--- |
+   | Dispositivo físico (Expo Go na mesma rede Wi-Fi) | `http://<IP-da-sua-maquina>:3000/api/v1` |
+   | Emulador Android | `http://10.0.2.2:3000/api/v1` |
+   | Simulador iOS | `http://localhost:3000/api/v1` |
+
+4. **Iniciar o servidor de desenvolvimento do Expo:**
+
+   ```bash
+   npx expo start
+   ```
+
+5. **Abrir o aplicativo:**
+
+   Escaneie o QR Code exibido no terminal pelo aplicativo **Expo Go** (no Android ou câmera no iOS), ou pressione `a` para abrir no emulador Android / `i` no simulador iOS.
+
+## Testes e Validação Técnica
+
+Execute os comandos abaixo dentro de `medfacil-mobile`:
 
 ```bash
-# Executar suíte unitária (CPF, máscaras, datas America/Recife e schemas Zod)
-npm test
-
 # Validar tipagem TypeScript estrita
-npm run typecheck
+npx tsc --noEmit
+
+# Executar todos os testes unitários (11 arquivos, 65 testes)
+npm test
 ```
 
-## Build de instalação com EAS Build
+## Build com EAS Build
 
-As configurações de build ficam em [eas.json](eas.json) e os identificadores nativos (`android.package` e `ios.bundleIdentifier`) em [app.json](app.json).
+As configurações de build nativo ficam em [eas.json](eas.json) e os identificadores em [app.json](app.json):
 
 ```bash
-# 1. Instalar a CLI do EAS (globalmente) e autenticar na conta Expo
 npm install -g eas-cli
 eas login
-
-# 2. Gerar APK Android para instalação direta em dispositivos de teste
 eas build -p android --profile preview
-
-# 3. Outros perfis disponíveis
-eas build -p android --profile development   # Development Client
-eas build -p all --profile production        # Pacotes de produção (Android e iOS)
 ```
 
-## Documentação
+## Documentação Complementar
 
 | Documento | Conteúdo |
 | :--- | :--- |
-| [Project Charter](docs/project-charter.md) | Visão, justificativa, objetivos SMART, escopo e stakeholders |
-| [Requisitos](docs/requisitos.md) | RF01 a RF12 e RNF01 a RNF08 |
+| [Project Charter](docs/project-charter.md) | Visão, justificativa, objetivos e escopo |
+| [Requisitos](docs/requisitos.md) | Requisitos funcionais e não funcionais |
 | [Casos de Uso](docs/casos-de-uso.md) | Atores e especificação detalhada |
 | [User Stories](docs/user-stories.md) | Histórias com critérios BDD |
-| [Backlog de Issues](docs/backlog-issues.md) | 15 issues prontas para o GitHub |
-| [Plano de Migração](../docs/plano-migracao-react-native.md) | Auditoria e roadmap técnico |
-
-## Fluxo de branches e versionamento
-
-### Git Flow
-
-| Branch | Origem | Destino | Finalidade |
-| :--- | :--- | :--- | :--- |
-| `main` | N/A | N/A | Código estável de produção; cada merge recebe uma tag SemVer |
-| `develop` | `main` | `main` (via release) | Integração contínua do desenvolvimento |
-| `feature/issue-XX-descricao` | `develop` | `develop` (PR) | Nova funcionalidade vinculada à issue |
-| `release/vX.Y.Z` | `develop` | `main` e `develop` | Estabilização e ajustes finais da versão |
-| `hotfix/vX.Y.Z-descricao` | `main` | `main` e `develop` | Correção urgente em produção |
-
-### Conventional Commits
-
-Formato: `tipo(escopo): descrição (#issue)`
-
-| Tipo | Uso | Efeito SemVer |
-| :--- | :--- | :--- |
-| `feat` | Nova funcionalidade | MINOR |
-| `fix` | Correção de bug | PATCH |
-| `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf` | Demais mudanças | Nenhum |
-| `feat!` / `BREAKING CHANGE:` | Quebra de compatibilidade | MAJOR |
-
-Exemplo: `feat(patient): adiciona etapa de horários no agendamento (#11)`
-
-### SemVer
-
-`MAJOR.MINOR.PATCH`: a versão atual é `v0.3.0` (pré-1.0: API interna ainda pode mudar). Tags `vX.Y.Z` são criadas na `main` ao fechar cada release.
+| [Backlog de Issues](docs/backlog-issues.md) | Backlog estruturado do projeto |
+| [Plano de Migração](../docs/plano-migracao-react-native.md) | Estratégia de migração do PWA para React Native |
 
 ## Licença
 
-ISC, alinhada ao `package.json` do backend. Confirme ou atualize antes da publicação.
+ISC, alinhada ao `package.json` do projeto.
