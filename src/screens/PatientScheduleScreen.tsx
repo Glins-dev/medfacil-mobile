@@ -2,24 +2,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Platform,
   Pressable,
   ScrollView,
-  StatusBar,
   Text,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 
-import { BrandLogo, Button, Modal, NoticeCard } from "@/components";
+import {
+  Button,
+  Modal,
+  NoticeCard,
+  PatientScreenHeader,
+} from "@/components";
+import { CalendarIcon } from "@/navigation/icons";
 import {
   ScheduleStepIndicator,
   type ScheduleStepNumber,
@@ -99,23 +100,6 @@ function useRemoteList<T>(load: (() => Promise<T[]>) | null, deps: unknown[]) {
   return { items, status, reload: () => setReloadKey((key) => key + 1) };
 }
 
-function ArrowLeftIcon() {
-  return (
-    <Svg
-      width={18}
-      height={18}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#0e706f"
-      strokeWidth={2.2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M19 12H5M12 19l-7-7 7-7" />
-    </Svg>
-  );
-}
-
 function ChevronDownIcon({ color }: { color: string }) {
   return (
     <Svg
@@ -177,10 +161,6 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const { appointments: patientAppointments, reload: reloadAppointments } =
     useAppointments();
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
   const scrollBottomPadding = 104 + insets.bottom;
 
   const [step, setStep] = useState<ScheduleStepNumber>(1);
@@ -441,36 +421,22 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const specialtyImage = getSpecialtyImage(selectedSpecialty?.name);
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#ffffff",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-white"
-    >
+    <View className="flex-1 bg-white">
+      <PatientScreenHeader
+        title="Agenda"
+        subtitle="Escolha a especialidade e o horário."
+        onBackPress={handleBack}
+        backAccessibilityLabel={
+          step === 1 ? "Voltar para início" : "Voltar para etapa anterior"
+        }
+        icon={<CalendarIcon color="#0e706f" size={28} />}
+      />
+
       <ScrollView
-        contentContainerClassName="flex-grow gap-5 px-5 pt-3"
+        contentContainerClassName="flex-grow gap-5 px-5 pt-5"
         contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel={
-              step === 1 ? "Voltar" : "Voltar para etapa anterior"
-            }
-            className="min-h-[48px] flex-row items-center gap-1.5 rounded-xl px-1 active:opacity-70"
-          >
-            <ArrowLeftIcon />
-            <Text className="text-sm font-semibold text-brand">Voltar</Text>
-          </Pressable>
-
-          <BrandLogo height={26} />
-        </View>
-
         <>
           {step === 1 ? (
             <View className="flex-1 gap-5">
@@ -1088,6 +1054,6 @@ export function PatientScheduleScreen({ navigation }: Props) {
           })}
         </ScrollView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

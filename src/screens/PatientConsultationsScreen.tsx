@@ -2,23 +2,19 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Platform,
   Pressable,
   RefreshControl,
-  StatusBar,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { BrandLogo, Button, DateBadge } from "@/components";
+import { Button, DateBadge, PatientScreenHeader } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import type {
   PatientStackParamList,
@@ -225,6 +221,9 @@ const FILTER_OPTIONS: { key: ConsultationFilter; label: string }[] = [
   { key: "HISTORY", label: "Histórico" },
 ];
 
+const ICON_CONSULTAS =
+  require("../../assets/icons/icone-consultas.png") as ImageSourcePropType;
+
 // Listagem de consultas futuras e historico do paciente com filtro e atualizacao.
 export function PatientConsultationsScreen({ navigation }: Props) {
   const { appointments, status, reload } = useAppointments();
@@ -232,10 +231,6 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<ConsultationFilter>("ALL");
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
   const scrollBottomPadding = 104 + insets.bottom;
 
   const nowIso = new Date().toISOString();
@@ -268,22 +263,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   };
 
   const renderHeader = () => (
-    <View className="gap-4 pb-4">
-      <View>
-        <View className="flex-row items-center justify-between gap-3">
-          <Text
-            accessibilityRole="header"
-            className="text-3xl font-bold text-ink"
-          >
-            Consultas
-          </Text>
-          <BrandLogo height={26} />
-        </View>
-        <Text className="mt-1 text-base text-muted">
-          Acompanhe seus horários agendados e seu histórico.
-        </Text>
-      </View>
-
+    <View className="pb-4">
       <View className="flex-row gap-2">
         {FILTER_OPTIONS.map((option) => {
           const active = filter === option.key;
@@ -381,15 +361,15 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#ffffff",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-white"
-    >
+    <View className="flex-1 bg-white">
+      <PatientScreenHeader
+        title="Consultas"
+        subtitle="Acompanhe seus atendimentos."
+        onBackPress={() => navigation.navigate("PatientHome")}
+        backAccessibilityLabel="Voltar para início"
+        imageSource={ICON_CONSULTAS}
+      />
+
       <FlatList
         data={status === "ready" ? filteredAppointments : []}
         keyExtractor={(item) => item.id}
@@ -408,7 +388,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View className="h-3" />}
-        contentContainerClassName="flex-grow px-5 pt-3"
+        contentContainerClassName="flex-grow px-5 pt-4"
         contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
@@ -421,6 +401,6 @@ export function PatientConsultationsScreen({ navigation }: Props) {
           />
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }

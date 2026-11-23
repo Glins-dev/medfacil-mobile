@@ -3,23 +3,17 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Platform,
   Pressable,
   RefreshControl,
-  StatusBar,
   Text,
   View,
   type ImageSourcePropType,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 
-import { BrandLogo, Button, Modal } from "@/components";
+import { Button, Modal, PatientScreenHeader } from "@/components";
 import type { PatientStackParamList } from "@/navigation/types";
 import { prescriptionService } from "@/services/prescription.service";
 import { useAuthStore } from "@/stores/auth.store";
@@ -37,23 +31,6 @@ type Props = NativeStackScreenProps<
 
 const ICON_MINHAS_RECEITAS =
   require("../../assets/icons/icone-minhas-receitas.png") as ImageSourcePropType;
-
-function ArrowLeftTealIcon() {
-  return (
-    <Svg
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#004959"
-      strokeWidth={2.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M19 12H5M12 19l-7-7 7-7" />
-    </Svg>
-  );
-}
 
 function ChevronRightMutedIcon() {
   return (
@@ -129,10 +106,6 @@ export function PatientPrescriptionsScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
 
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
   const bottomPadding = Math.max(insets.bottom, 16) + 24;
 
   const patientPrescriptions = useMemo(() => {
@@ -185,86 +158,36 @@ export function PatientPrescriptionsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#c6eceb",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-[#c6eceb]"
-    >
-      <View className="flex-1 bg-white">
-        <LinearGradient
-          colors={["#c6eceb", "#dcf4f2"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 22,
-            borderBottomLeftRadius: 28,
-            borderBottomRightRadius: 28,
-          }}
-        >
-          <View className="flex-row items-center justify-between gap-3">
-            <Pressable
-              onPress={() => navigation.goBack()}
-              accessibilityRole="button"
-              accessibilityLabel="Voltar"
-              className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-white active:opacity-80"
-            >
-              <ArrowLeftTealIcon />
-            </Pressable>
+    <View className="flex-1 bg-white">
+      <PatientScreenHeader
+        title="Minhas receitas"
+        subtitle="Consulte suas prescrições médicas."
+        onBackPress={() => navigation.goBack()}
+        backAccessibilityLabel="Voltar"
+        imageSource={ICON_MINHAS_RECEITAS}
+      />
 
-            <BrandLogo height={26} />
-          </View>
-
-          <View className="mt-4 flex-row items-center justify-between gap-4">
-            <View className="min-w-0 flex-1 gap-1">
-              <Text
-                accessibilityRole="header"
-                className="text-2xl font-bold leading-tight text-[#004959]"
-              >
-                Minhas receitas
-              </Text>
-              <Text className="text-sm font-medium text-[#004959]/85">
-                Prescrições e orientações médicas.
-              </Text>
-            </View>
-
-            <View className="h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/90">
-              <Image
-                source={ICON_MINHAS_RECEITAS}
-                resizeMode="contain"
-                style={{ width: 48, height: 48 }}
-              />
-            </View>
-          </View>
-        </LinearGradient>
-
-        <FlatList
-          data={hasHydrated ? patientPrescriptions : []}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <PrescriptionCard item={item} onPress={() => setSelected(item)} />
-          )}
-          ListEmptyComponent={renderEmpty}
-          ItemSeparatorComponent={() => <View className="h-3" />}
-          contentContainerClassName="flex-grow px-5 pt-5"
-          contentContainerStyle={{ paddingBottom: bottomPadding }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                void handleRefresh();
-              }}
-              tintColor="#0e706f"
-              colors={["#0e706f"]}
-            />
-          }
-        />
-      </View>
+      <FlatList
+        data={hasHydrated ? patientPrescriptions : []}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <PrescriptionCard item={item} onPress={() => setSelected(item)} />
+        )}
+        ListEmptyComponent={renderEmpty}
+        ItemSeparatorComponent={() => <View className="h-3" />}
+        contentContainerClassName="flex-grow px-5 pt-5"
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              void handleRefresh();
+            }}
+            tintColor="#0e706f"
+            colors={["#0e706f"]}
+          />
+        }
+      />
 
       <Modal
         open={Boolean(selected)}
@@ -324,6 +247,6 @@ export function PatientPrescriptionsScreen({ navigation }: Props) {
           </View>
         ) : null}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

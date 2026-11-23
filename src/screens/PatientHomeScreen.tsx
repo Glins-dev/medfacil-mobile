@@ -1,34 +1,30 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
   type ImageSourcePropType,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
-  BrandLogo,
   Button,
   DateBadge,
   FeatureCard,
   MainCard,
   Modal,
   NoticeCard,
+  PatientScreenHeader,
 } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
+import { HomeIcon } from "@/navigation/icons";
 import type {
   PatientStackParamList,
   PatientTabParamList,
@@ -70,10 +66,6 @@ export function PatientHomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
   const scrollBottomPadding = 104 + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
@@ -96,17 +88,16 @@ export function PatientHomeScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#f8fbfb",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-[#f8fbfb]"
-    >
+    <View className="flex-1 bg-[#f8fbfb]">
+      <PatientScreenHeader
+        title={`Olá${firstName ? `, ${firstName}` : ""}`}
+        subtitle="O que você precisa hoje?"
+        icon={<HomeIcon color="#0e706f" size={28} />}
+      />
+
       <ScrollView
-        contentContainerClassName="gap-6 px-5 pt-3"
+        className="flex-1"
+        contentContainerClassName="gap-6 px-5 pt-6"
         contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
@@ -119,21 +110,6 @@ export function PatientHomeScreen({ navigation }: Props) {
           />
         }
       >
-        <View className="items-end">
-          <BrandLogo height={32} />
-        </View>
-
-        <View>
-          <Text
-            accessibilityRole="header"
-            className="text-3xl font-bold text-[#1f2937]"
-          >
-            Olá{firstName ? `, ${firstName}` : ""}
-          </Text>
-          <Text className="mt-1 text-base text-slate-600">
-            O que você precisa hoje?
-          </Text>
-        </View>
 
         <MainCard
           title="Agendar consulta"
@@ -267,6 +243,6 @@ export function PatientHomeScreen({ navigation }: Props) {
           />
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

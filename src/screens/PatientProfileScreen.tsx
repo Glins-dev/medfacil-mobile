@@ -1,23 +1,17 @@
 import { useState, type ReactNode } from "react";
 import {
   Image,
-  Platform,
   Pressable,
   ScrollView,
-  StatusBar,
   Switch,
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { BrandLogo, Button, Modal } from "@/components";
+import { Button, Modal, PatientScreenHeader } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import { UserIcon } from "@/navigation/icons";
 import type { PatientTabParamList } from "@/navigation/types";
@@ -30,23 +24,6 @@ import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 type Props = BottomTabScreenProps<PatientTabParamList, "PatientProfile">;
 
 type ProfileModalKey = "personal" | "notifications" | "accessibility" | "help";
-
-function ArrowLeftTealIcon() {
-  return (
-    <Svg
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#004959"
-      strokeWidth={2.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M19 12H5M12 19l-7-7 7-7" />
-    </Svg>
-  );
-}
 
 function ChevronRightMutedIcon() {
   return (
@@ -185,10 +162,6 @@ export function PatientProfileScreen({ navigation }: Props) {
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(true);
 
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
   const scrollBottomPadding = 104 + insets.bottom;
 
   const fullName = user?.name?.trim() || "Não informado";
@@ -223,66 +196,21 @@ export function PatientProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#c6eceb",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-[#c6eceb]"
-    >
+    <View className="flex-1 bg-white">
+      <PatientScreenHeader
+        title="Perfil"
+        subtitle="Dados, preferências e ajuda."
+        onBackPress={() => navigation.navigate("PatientHome")}
+        backAccessibilityLabel="Voltar para início"
+        icon={<UserIcon color="#0e706f" size={28} />}
+      />
+
       <ScrollView
-        className="flex-1 bg-white"
-        contentContainerClassName="flex-grow bg-white"
+        className="flex-1"
+        contentContainerClassName="flex-grow gap-4 px-5 pt-6"
         contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
       >
-        <LinearGradient
-          colors={["#c6eceb", "#dcf4f2"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 24,
-            borderBottomLeftRadius: 28,
-            borderBottomRightRadius: 28,
-          }}
-        >
-          <View className="flex-row items-center justify-between gap-3">
-            <Pressable
-              onPress={() => navigation.navigate("PatientHome")}
-              accessibilityRole="button"
-              accessibilityLabel="Voltar para início"
-              className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-white active:opacity-80"
-            >
-              <ArrowLeftTealIcon />
-            </Pressable>
-
-            <BrandLogo height={26} />
-          </View>
-
-          <View className="mt-4 flex-row items-center justify-between gap-4">
-            <View className="min-w-0 flex-1 gap-1">
-              <Text
-                accessibilityRole="header"
-                className="text-3xl font-bold text-[#004959]"
-              >
-                Perfil
-              </Text>
-              <Text className="text-sm font-medium text-[#004959]/85">
-                Dados, preferências e ajuda.
-              </Text>
-            </View>
-
-            <View className="h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/90">
-              <UserIcon color="#0e706f" size={28} />
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View className="flex-1 gap-4 px-5 pt-6">
-          <View className="gap-3">
+        <View className="gap-3">
             <ProfileOptionCard
               icon={<UserIcon color="#0e706f" size={24} />}
               title="Dados pessoais"
@@ -351,7 +279,6 @@ export function PatientProfileScreen({ navigation }: Props) {
               </Text>
             </Pressable>
           </View>
-        </View>
       </ScrollView>
 
       <Modal
@@ -473,6 +400,6 @@ export function PatientProfileScreen({ navigation }: Props) {
           </View>
         ) : null}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
