@@ -26,7 +26,7 @@ import type { AuthStackParamList } from "@/navigation/types";
 import { loginSchema, type LoginFormData } from "@/schemas/auth.schema";
 import { getApiErrorMessage } from "@/services/api";
 import { authService } from "@/services/auth.service";
-import { useAuthStore } from "@/stores/auth.store";
+import { getLocalUserAddress, useAuthStore } from "@/stores/auth.store";
 import { maskCpf, onlyDigits } from "@/utils/cpf";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
@@ -113,11 +113,18 @@ export function LoginScreen({ navigation }: Props) {
 
   const onSubmit = async (data: LoginFormData) => {
     clearErrors("root");
+    const digitsCpf = onlyDigits(data.cpf);
     try {
       const response = await authService.login(data);
+      const savedAddress = await getLocalUserAddress({
+        userId: response.user.id,
+        cpf: digitsCpf,
+      });
       useAuthStore.getState().setSession(response.token, {
         ...response.user,
-        cpf: response.user.cpf ?? onlyDigits(data.cpf),
+        cpf: response.user.cpf ?? digitsCpf,
+        endereco:
+          response.user.endereco ?? response.user.address ?? savedAddress,
       });
     } catch (error) {
       setError("root", {

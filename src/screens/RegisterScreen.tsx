@@ -32,7 +32,7 @@ import type { AuthStackParamList } from "@/navigation/types";
 import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
 import { getApiErrorMessage } from "@/services/api";
 import { authService } from "@/services/auth.service";
-import { useAuthStore } from "@/stores/auth.store";
+import { saveLocalUserAddress, useAuthStore } from "@/stores/auth.store";
 import { USER_SEX_OPTIONS } from "@/types/user";
 import { maskCpf, onlyDigits } from "@/utils/cpf";
 import { maskDate } from "@/utils/date";
@@ -143,6 +143,7 @@ export function RegisterScreen({ navigation }: Props) {
       cpf: "",
       phone: "",
       birthDate: "",
+      endereco: "",
       password: "",
       confirmPassword: "",
     },
@@ -150,6 +151,8 @@ export function RegisterScreen({ navigation }: Props) {
 
   const onSubmit = async (data: RegisterFormData) => {
     clearErrors("root");
+    const trimmedAddress = data.endereco.trim();
+    const digitsCpf = onlyDigits(data.cpf);
     try {
       const response = await authService.register({
         name: data.name.trim(),
@@ -158,13 +161,22 @@ export function RegisterScreen({ navigation }: Props) {
         phone: data.phone,
         birthDate: data.birthDate,
         sexo: data.sexo,
+        endereco: trimmedAddress,
         password: data.password,
+      });
+      const resolvedAddress =
+        response.user.endereco ?? response.user.address ?? trimmedAddress;
+      await saveLocalUserAddress({
+        userId: response.user.id,
+        cpf: digitsCpf,
+        address: resolvedAddress,
       });
       useAuthStore.getState().setSession(response.token, {
         ...response.user,
-        cpf: response.user.cpf ?? onlyDigits(data.cpf),
+        cpf: response.user.cpf ?? digitsCpf,
         birthDate: response.user.birthDate ?? data.birthDate,
         sexo: response.user.sexo ?? data.sexo,
+        endereco: resolvedAddress,
       });
     } catch (error) {
       setError("root", {
@@ -443,6 +455,32 @@ export function RegisterScreen({ navigation }: Props) {
                   {errors.sexo.message}
                 </Text>
               ) : null}
+            </View>
+
+            <View
+              onLayout={(event) => {
+                fieldOffsetsRef.current.endereco = event.nativeEvent.layout.y;
+              }}
+            >
+              <Controller
+                control={control}
+                name="endereco"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Endereço"
+                    value={value}
+                    onChangeText={onChange}
+                    onFocus={() => scrollToField("endereco")}
+                    onBlur={onBlur}
+                    autoCapitalize="words"
+                    autoComplete="street-address"
+                    placeholder="Ex.: Rua das Flores, 123, Bairro, Cidade, UF"
+                    hint="Informe rua, número, bairro, cidade e estado."
+                    editable={!isSubmitting}
+                    error={errors.endereco?.message}
+                  />
+                )}
+              />
             </View>
 
             <View

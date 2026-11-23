@@ -46,6 +46,14 @@ export const registerSchema = z
     sexo: z.enum(USER_SEX_OPTIONS, {
       error: "Selecione uma opção para sexo.",
     }),
+    endereco: z
+      .string({ error: "Informe seu endereço completo." })
+      .trim()
+      .min(
+        10,
+        "Informe o endereço completo (rua, número, bairro, cidade e estado)."
+      )
+      .max(240, "Endereço muito longo."),
     password: z
       .string()
       .min(8, "Mínimo de 8 caracteres.")

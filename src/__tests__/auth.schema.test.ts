@@ -34,6 +34,7 @@ describe("registerSchema", () => {
     phone: "(81) 99999-8888",
     birthDate: "15/05/1990",
     sexo: "Feminino" as const,
+    endereco: "Rua das Flores, 123, Boa Vista, Recife, PE",
     password: "Password123",
     confirmPassword: "Password123",
   };
@@ -115,6 +116,37 @@ describe("registerSchema", () => {
     expect(mismatch.success).toBe(false);
     if (!mismatch.success) {
       expect(mismatch.error.issues[0]?.path).toEqual(["confirmPassword"]);
+    }
+  });
+
+  it("valida o campo endereco exigindo endereco completo", () => {
+    const emptyAddress = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "   ",
+    });
+    expect(emptyAddress.success).toBe(false);
+    if (!emptyAddress.success) {
+      expect(emptyAddress.error.issues[0]?.path).toEqual(["endereco"]);
+    }
+
+    const shortAddress = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "Rua A, 1",
+    });
+    expect(shortAddress.success).toBe(false);
+    if (!shortAddress.success) {
+      expect(shortAddress.error.issues[0]?.path).toEqual(["endereco"]);
+    }
+
+    const validWithPadding = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "  Av. Conde da Boa Vista, 500, Recife, PE  ",
+    });
+    expect(validWithPadding.success).toBe(true);
+    if (validWithPadding.success) {
+      expect(validWithPadding.data.endereco).toBe(
+        "Av. Conde da Boa Vista, 500, Recife, PE"
+      );
     }
   });
 });

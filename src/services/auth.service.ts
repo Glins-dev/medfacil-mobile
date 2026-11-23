@@ -15,6 +15,7 @@ export interface RegisterPayload {
   phone: string;
   birthDate: string; // DD/MM/AAAA
   sexo?: UserSex;
+  endereco?: string;
   password: string;
 }
 

@@ -19,6 +19,8 @@ export interface SessionUser {
   birthDate?: string | null;
   dataNascimento?: string | null;
   sexo?: UserSex | null;
+  endereco?: string | null;
+  address?: string | null;
   matricula?: string | null;
   registrationNumber?: string | null;
   patientCode?: string | null;
@@ -34,6 +36,61 @@ export interface AuthState {
 }
 
 const AUTH_STORAGE_KEY = "medfacil_auth";
+const ADDRESS_STORAGE_KEY = "medfacil_user_addresses";
+
+async function readAddressBook(): Promise<Record<string, string>> {
+  try {
+    const raw = await SecureStore.getItemAsync(ADDRESS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+// Persiste localmente o endereco informado no cadastro caso o backend nao o retorne no login.
+export async function saveLocalUserAddress(params: {
+  userId?: string | null;
+  cpf?: string | null;
+  address?: string | null;
+}): Promise<void> {
+  const cleanAddress = params.address?.trim();
+  if (!cleanAddress) return;
+
+  const book = await readAddressBook();
+  const cleanId = params.userId?.trim();
+  const cleanCpf = params.cpf?.replace(/\D/g, "");
+  if (!cleanId && !cleanCpf) return;
+
+  if (cleanId) book[`id:${cleanId}`] = cleanAddress;
+  if (cleanCpf) book[`cpf:${cleanCpf}`] = cleanAddress;
+
+  try {
+    await SecureStore.setItemAsync(ADDRESS_STORAGE_KEY, JSON.stringify(book));
+  } catch {
+    // Ignora indisponibilidade de storage fora do ambiente nativo.
+  }
+}
+
+// Recupera o endereco salvo localmente por id ou CPF para hidratar a sessao apos novo login.
+export async function getLocalUserAddress(params: {
+  userId?: string | null;
+  cpf?: string | null;
+}): Promise<string | null> {
+  const book = await readAddressBook();
+  const cleanId = params.userId?.trim();
+  if (cleanId && book[`id:${cleanId}`]) {
+    return book[`id:${cleanId}`];
+  }
+  const cleanCpf = params.cpf?.replace(/\D/g, "");
+  if (cleanCpf && book[`cpf:${cleanCpf}`]) {
+    return book[`cpf:${cleanCpf}`];
+  }
+  return null;
+}
 
 interface PersistedAuthPayload {
   state?: {

@@ -174,6 +174,8 @@ export function PatientProfileScreen(_props: Props) {
   const ageLabel =
     age !== null ? `${age} ${age === 1 ? "ano" : "anos"}` : "Não informada";
   const sexLabel = user?.sexo?.trim() || "Não informado";
+  const addressLabel =
+    user?.endereco?.trim() || user?.address?.trim() || "Não informado";
   const formattedCpf = user?.cpf ? maskCpf(user.cpf) : "Não informado";
   const registrationNumber =
     user?.matricula?.trim() ||
@@ -283,6 +285,7 @@ export function PatientProfileScreen(_props: Props) {
               <ProfileFieldRow label="Idade" value={ageLabel} />
               <ProfileFieldRow label="Sexo" value={sexLabel} />
               <ProfileFieldRow label="CPF" value={formattedCpf} />
+              <ProfileFieldRow label="Endereço" value={addressLabel} />
               {user?.email ? (
                 <ProfileFieldRow label="E-mail" value={user.email} />
               ) : null}
