@@ -7,13 +7,53 @@ import {
   type AppointmentStatus,
 } from "@/services/appointment.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { formatTime, getClinicDateKey } from "@/utils/date";
 
 export type { Appointment, AppointmentStatus };
+
+// Verifica se o paciente ja possui consulta ativa no mesmo dia e horario (America/Recife).
+export function findPatientAppointmentConflict(
+  appointments: Appointment[],
+  date: string,
+  time: string,
+  ignoreAppointmentId?: string
+): Appointment | null {
+  return (
+    appointments.find((item) => {
+      if (ignoreAppointmentId && item.id === ignoreAppointmentId) return false;
+      if (item.status !== "AGENDADO" && item.status !== "CONFIRMADO") {
+        return false;
+      }
+      return (
+        getClinicDateKey(item.dateTime) === date &&
+        formatTime(item.dateTime) === time
+      );
+    }) ?? null
+  );
+}
 
 // Rede de seguranca para mudancas feitas por terceiros (medico ou admin).
 const STALE_AFTER_MS = 5 * 60 * 1000;
 
 export type LoadStatus = "idle" | "loading" | "ready" | "error";
+
+export type AttendanceConfirmationStatus = "CONFIRMED" | "DECLINED";
+
+export function getEffectiveAppointmentStatus(
+  appointment: Appointment,
+  attendance?: AttendanceConfirmationStatus
+): AppointmentStatus {
+  if (
+    appointment.status === "CANCELADO" ||
+    appointment.status === "CONCLUIDO"
+  ) {
+    return appointment.status;
+  }
+  if (attendance === "CONFIRMED") {
+    return "CONFIRMADO";
+  }
+  return appointment.status;
+}
 
 const sortByDate = (list: Appointment[]) =>
   [...list].sort((a, b) => a.dateTime.localeCompare(b.dateTime));
@@ -21,11 +61,17 @@ const sortByDate = (list: Appointment[]) =>
 interface AppointmentState {
   userId: string | null;
   appointments: Appointment[];
+  attendanceById: Record<string, AttendanceConfirmationStatus>;
   status: LoadStatus;
   fetchedAt: number | null;
   load: (options?: { force?: boolean }) => Promise<void>;
   invalidate: () => void;
   upsert: (appointment: Appointment) => void;
+  setAttendance: (
+    appointmentId: string,
+    response: AttendanceConfirmationStatus
+  ) => void;
+  clearAttendance: (appointmentId: string) => void;
   remove: (id: string) => void;
   clear: () => void;
 }
@@ -36,6 +82,7 @@ let inflight: { userId: string; promise: Promise<void> } | null = null;
 export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
   userId: null,
   appointments: [],
+  attendanceById: {},
   status: "idle",
   fetchedAt: null,
 
@@ -56,7 +103,13 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
 
     // Outro usuario descarta o cache; mesmo usuario com dado antigo atualiza em segundo plano.
     if (!sameUser) {
-      set({ userId, appointments: [], status: "loading", fetchedAt: null });
+      set({
+        userId,
+        appointments: [],
+        attendanceById: {},
+        status: "loading",
+        fetchedAt: null,
+      });
     } else if (status !== "ready") {
       set({ status: "loading" });
     }
@@ -65,9 +118,22 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
       .list()
       .then((appointments) => {
         if (useAuthStore.getState().user?.id !== userId) return;
+        const prevAttendance = get().attendanceById;
+        const validIds = new Set(
+          appointments
+            .filter((a) => a.status !== "CANCELADO" && a.status !== "CONCLUIDO")
+            .map((a) => a.id)
+        );
+        const nextAttendance: Record<string, AttendanceConfirmationStatus> = {};
+        for (const [id, value] of Object.entries(prevAttendance)) {
+          if (validIds.has(id)) {
+            nextAttendance[id] = value;
+          }
+        }
         set({
           userId,
           appointments: sortByDate(appointments),
+          attendanceById: nextAttendance,
           status: "ready",
           fetchedAt: Date.now(),
         });
@@ -90,28 +156,70 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
 
   // Usadas depois que a API confirma uma mudanca feita pelo proprio paciente.
   upsert: (appointment) =>
-    set((s) =>
-      s.status === "ready"
-        ? {
-            appointments: sortByDate([
-              ...s.appointments.filter((a) => a.id !== appointment.id),
-              appointment,
-            ]),
-          }
-        : s
-    ),
+    set((s) => {
+      const existing = s.appointments.find((a) => a.id === appointment.id);
+      const shouldResetAttendance =
+        appointment.status === "CANCELADO" ||
+        appointment.status === "CONCLUIDO" ||
+        (existing !== undefined && existing.dateTime !== appointment.dateTime);
+
+      let nextAttendance = s.attendanceById;
+      if (shouldResetAttendance && appointment.id in s.attendanceById) {
+        nextAttendance = { ...s.attendanceById };
+        delete nextAttendance[appointment.id];
+      }
+
+      if (s.status !== "ready") {
+        return nextAttendance !== s.attendanceById
+          ? { attendanceById: nextAttendance }
+          : s;
+      }
+
+      return {
+        appointments: sortByDate([
+          ...s.appointments.filter((a) => a.id !== appointment.id),
+          appointment,
+        ]),
+        attendanceById: nextAttendance,
+      };
+    }),
+
+  setAttendance: (appointmentId, response) =>
+    set((s) => ({
+      attendanceById: {
+        ...s.attendanceById,
+        [appointmentId]: response,
+      },
+    })),
+
+  clearAttendance: (appointmentId) =>
+    set((s) => {
+      if (!(appointmentId in s.attendanceById)) return s;
+      const next = { ...s.attendanceById };
+      delete next[appointmentId];
+      return { attendanceById: next };
+    }),
 
   remove: (id) =>
-    set((s) => ({
-      appointments: s.appointments.filter((a) => a.id !== id),
-    })),
+    set((s) => {
+      let nextAttendance = s.attendanceById;
+      if (id in s.attendanceById) {
+        nextAttendance = { ...s.attendanceById };
+        delete nextAttendance[id];
+      }
+      return {
+        appointments: s.appointments.filter((a) => a.id !== id),
+        attendanceById: nextAttendance,
+      };
+    }),
 
   clear: () => {
     inflight = null;
-    const { userId, appointments, status, fetchedAt } = get();
+    const { userId, appointments, attendanceById, status, fetchedAt } = get();
     if (
       userId === null &&
       appointments.length === 0 &&
+      Object.keys(attendanceById).length === 0 &&
       status === "idle" &&
       fetchedAt === null
     ) {
@@ -120,6 +228,7 @@ export const useAppointmentStore = create<AppointmentState>()((set, get) => ({
     set({
       userId: null,
       appointments: [],
+      attendanceById: {},
       status: "idle",
       fetchedAt: null,
     });

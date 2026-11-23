@@ -16,7 +16,7 @@ import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
 import { getApiErrorMessage } from "@/services/api";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
-import { maskCpf } from "@/utils/cpf";
+import { maskCpf, onlyDigits } from "@/utils/cpf";
 import { maskDate } from "@/utils/date";
 import { maskPhone } from "@/utils/masks";
 
@@ -54,7 +54,11 @@ export function RegisterScreen({ navigation }: Props) {
         birthDate: data.birthDate,
         password: data.password,
       });
-      useAuthStore.getState().setSession(response.token, response.user);
+      useAuthStore.getState().setSession(response.token, {
+        ...response.user,
+        cpf: response.user.cpf ?? onlyDigits(data.cpf),
+        birthDate: response.user.birthDate ?? data.birthDate,
+      });
     } catch (error) {
       setError("root", {
         message: getApiErrorMessage(error, "Erro ao criar conta."),

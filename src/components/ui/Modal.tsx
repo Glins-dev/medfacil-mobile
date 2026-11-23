@@ -81,7 +81,7 @@ export function Modal({
                   accessibilityRole="button"
                   accessibilityLabel={closeLabel}
                   hitSlop={4}
-                  className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full active:bg-line/40"
+                  className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full active:bg-line/40"
                 >
                   <CloseIcon />
                 </Pressable>
