@@ -33,6 +33,8 @@ describe("registerSchema", () => {
     cpf: "529.982.247-25",
     phone: "(81) 99999-8888",
     birthDate: "15/05/1990",
+    sexo: "Feminino" as const,
+    endereco: "Rua das Flores, 123, Boa Vista, Recife, PE",
     password: "Password123",
     confirmPassword: "Password123",
   };
@@ -40,6 +42,43 @@ describe("registerSchema", () => {
   it("aceita dados completos validos de autocadastro", () => {
     const parsed = registerSchema.safeParse(validPayload);
     expect(parsed.success).toBe(true);
+  });
+
+  it("aceita todas as opcoes validas do campo sexo", () => {
+    for (const sexo of ["Masculino", "Feminino", "Não informar"] as const) {
+      const parsed = registerSchema.safeParse({
+        ...validPayload,
+        sexo,
+      });
+      expect(parsed.success).toBe(true);
+    }
+  });
+
+  it("rejeita valor invalido ou ausente para o campo sexo", () => {
+    const invalidOption = registerSchema.safeParse({
+      ...validPayload,
+      sexo: "Outro",
+    });
+    expect(invalidOption.success).toBe(false);
+    if (!invalidOption.success) {
+      expect(invalidOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
+
+    const emptyOption = registerSchema.safeParse({
+      ...validPayload,
+      sexo: "",
+    });
+    expect(emptyOption.success).toBe(false);
+    if (!emptyOption.success) {
+      expect(emptyOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
+
+    const { sexo: _omitted, ...missingSexo } = validPayload;
+    const omittedOption = registerSchema.safeParse(missingSexo);
+    expect(omittedOption.success).toBe(false);
+    if (!omittedOption.success) {
+      expect(omittedOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
   });
 
   it("rejeita e-mail invalido, telefone curto e data invalida", () => {
@@ -77,6 +116,37 @@ describe("registerSchema", () => {
     expect(mismatch.success).toBe(false);
     if (!mismatch.success) {
       expect(mismatch.error.issues[0]?.path).toEqual(["confirmPassword"]);
+    }
+  });
+
+  it("valida o campo endereco exigindo endereco completo", () => {
+    const emptyAddress = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "   ",
+    });
+    expect(emptyAddress.success).toBe(false);
+    if (!emptyAddress.success) {
+      expect(emptyAddress.error.issues[0]?.path).toEqual(["endereco"]);
+    }
+
+    const shortAddress = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "Rua A, 1",
+    });
+    expect(shortAddress.success).toBe(false);
+    if (!shortAddress.success) {
+      expect(shortAddress.error.issues[0]?.path).toEqual(["endereco"]);
+    }
+
+    const validWithPadding = registerSchema.safeParse({
+      ...validPayload,
+      endereco: "  Av. Conde da Boa Vista, 500, Recife, PE  ",
+    });
+    expect(validWithPadding.success).toBe(true);
+    if (validWithPadding.success) {
+      expect(validWithPadding.data.endereco).toBe(
+        "Av. Conde da Boa Vista, 500, Recife, PE"
+      );
     }
   });
 });

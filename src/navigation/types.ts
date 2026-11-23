@@ -20,6 +20,8 @@ export interface BookingConfirmedParams {
   doctorName: string;
   doctorCrm?: string;
   dateTime: string;
+  hospitalName?: string | null;
+  hospitalAddress?: string | null;
 }
 
 export type PatientStackParamList = {
@@ -30,14 +32,18 @@ export type PatientStackParamList = {
   PatientAttendanceConfirmed: { appointmentId: string };
   PatientBookingConfirmed: BookingConfirmedParams;
   PatientPrescriptions: undefined;
+  PatientHealth: undefined;
 };
 
 export type DoctorTabParamList = {
   DoctorHome: undefined;
-  DoctorAgenda: undefined;
+  DoctorHospitals: undefined;
+  DoctorSchedule: undefined;
 };
 
 export type AdminTabParamList = {
   AdminHome: undefined;
   AdminDoctors: undefined;
+  AdminHospitals: undefined;
+  AdminSchedules: undefined;
 };

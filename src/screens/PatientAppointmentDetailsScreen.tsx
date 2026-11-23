@@ -29,7 +29,10 @@ import {
   getEffectiveAppointmentStatus,
   useAppointmentStore,
 } from "@/stores/appointment.store";
+import { useAdminStore } from "@/stores/admin.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { formatLongDate, formatTime, getPeriod } from "@/utils/date";
+import { openBestRoute } from "@/utils/maps";
 import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
 type Props = NativeStackScreenProps<
@@ -134,6 +137,23 @@ function MapPinDetailIcon() {
   );
 }
 
+function RoutePinIcon() {
+  return (
+    <Svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#0e706f"
+      strokeWidth={2.1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M3 11 22 2l-9 19-2-8-8-2Z" />
+    </Svg>
+  );
+}
+
 function CheckCircleAmberIcon() {
   return (
     <Svg
@@ -199,12 +219,18 @@ function InfoRowCard({
 // Tela de detalhes da consulta com acoes de confirmar presenca, reagendar e cancelar.
 export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
   const { appointmentId } = route.params;
+  const user = useAuthStore((s) => s.user);
   const appointment = useAppointmentStore((s) =>
     s.appointments.find((item) => item.id === appointmentId)
   );
   const attendance = useAppointmentStore(
     (s) => s.attendanceById[appointmentId]
   );
+  const hospitals = useAdminStore((s) => s.hospitals);
+  const appointmentLocationsById = useAdminStore(
+    (s) => s.appointmentLocationsById
+  );
+  const localAppointments = useAdminStore((s) => s.localAppointments);
   const insets = useSafeAreaInsets();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -269,6 +295,41 @@ export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
       : attendance === "DECLINED"
         ? "Você informou que não poderá comparecer. Toque para alterar."
         : "Disponível até 48 horas antes.";
+
+  const savedLocation = appointmentLocationsById[appointment.id];
+  const localAppointment = localAppointments.find(
+    (item) => item.id === appointment.id
+  );
+  const linkedHospital =
+    hospitals.find(
+      (hospital) =>
+        (savedLocation?.hospitalId &&
+          hospital.id === savedLocation.hospitalId) ||
+        (localAppointment?.hospitalId &&
+          hospital.id === localAppointment.hospitalId) ||
+        hospital.doctorIds.includes(appointment.doctorId)
+    ) ?? null;
+
+  const resolvedHospitalName =
+    appointment.hospitalName?.trim() ||
+    savedLocation?.hospitalName?.trim() ||
+    localAppointment?.hospitalName?.trim() ||
+    linkedHospital?.name?.trim() ||
+    null;
+  const resolvedHospitalAddress =
+    appointment.hospitalAddress?.trim() ||
+    savedLocation?.hospitalAddress?.trim() ||
+    localAppointment?.hospitalAddress?.trim() ||
+    linkedHospital?.address?.trim() ||
+    null;
+
+  const displayLocationTitle = resolvedHospitalName ?? CLINIC_INFO.unitLabel;
+  const displayLocationHint =
+    resolvedHospitalAddress ?? `${CLINIC_INFO.name} · ${CLINIC_INFO.address}`;
+  const routeDestinationName = resolvedHospitalName ?? CLINIC_INFO.name;
+  const routeDestinationAddress =
+    resolvedHospitalAddress ?? CLINIC_INFO.address;
+  const originAddress = user?.endereco ?? user?.address ?? null;
 
   return (
     <View className="flex-1 bg-white">
@@ -365,12 +426,44 @@ export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
               appointment.dateTime
             )}`}
           />
-          <InfoRowCard
-            icon={<MapPinDetailIcon />}
-            label="Local"
-            value={CLINIC_INFO.unitLabel}
-            hint={`${CLINIC_INFO.name} · ${CLINIC_INFO.address}`}
-          />
+          <View className="gap-3.5 rounded-2xl border border-line bg-white p-4">
+            <View className="flex-row items-center gap-3.5">
+              <View className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+                <MapPinDetailIcon />
+              </View>
+              <View className="min-w-0 flex-1 gap-0.5">
+                <Text className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Local
+                </Text>
+                <Text className="text-base font-bold text-ink">
+                  {displayLocationTitle}
+                </Text>
+                <Text className="text-xs text-muted">
+                  {displayLocationHint}
+                </Text>
+              </View>
+            </View>
+
+            <View className="border-t border-line/60 pt-3">
+              <Pressable
+                onPress={() => {
+                  void openBestRoute({
+                    originAddress,
+                    destinationName: routeDestinationName,
+                    destinationAddress: routeDestinationAddress,
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Veja a melhor rota no Google Maps"
+                className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-2xl border-[1.5px] border-[#0e706f] bg-white px-4 py-3 active:opacity-80"
+              >
+                <RoutePinIcon />
+                <Text className="text-sm font-bold text-[#0e706f]">
+                  Veja a melhor rota
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
 
         {isActionable ? (

@@ -3,19 +3,30 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Path } from "react-native-svg";
 
-import { Button, Input } from "@/components";
+import {
+  AppScreenHeader,
+  Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
+  getFieldFrameStyles,
+  Input,
+  Modal,
+} from "@/components";
 import { NewSpecialtyModal } from "@/components/modals/NewSpecialtyModal";
+import { StethoscopeIcon } from "@/navigation/icons";
 import type { AdminTabParamList } from "@/navigation/types";
 import {
   createDoctorSchema,
@@ -29,22 +40,53 @@ import {
 import { getApiErrorMessage, getApiErrorStatus } from "@/services/api";
 import { maskCpf, onlyDigits } from "@/utils/cpf";
 import { maskCrm, maskPhone } from "@/utils/masks";
+import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<AdminTabParamList, "AdminDoctors">;
 type SpecLoadStatus = "loading" | "ready" | "error";
 
+const CHECK_ICON =
+  require("../../assets/icons/check-icon.png") as ImageSourcePropType;
+
 const bySpecialtyName = (a: AdminSpecialty, b: AdminSpecialty) =>
   a.name.localeCompare(b.name, "pt-BR");
 
-function SuccessCheckIcon() {
+const styles = StyleSheet.create({
+  cardShadow: {
+    shadowColor: "#0e706f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+});
+
+function ChevronDownIcon({ color }: { color: string }) {
   return (
     <Svg
-      width={28}
-      height={28}
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <Svg
+      width={18}
+      height={18}
       viewBox="0 0 24 24"
       fill="none"
       stroke="#0e706f"
-      strokeWidth={2.4}
+      strokeWidth={2.6}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -59,9 +101,13 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
   const [specStatus, setSpecStatus] = useState<SpecLoadStatus>("loading");
   const [reloadKey, setReloadKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [createdDoctor, setCreatedDoctor] = useState<CreatedDoctor | null>(
     null
   );
+
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const {
     control,
@@ -177,56 +223,63 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      className="flex-1 bg-brand-cream"
-    >
+    <View className="flex-1 bg-[#f8fbfb]">
+      <AppScreenHeader
+        title="Cadastrar médico"
+        subtitle="Crie o acesso profissional e vincule as especialidades."
+        onBackPress={() => navigation.navigate("AdminHome")}
+        backAccessibilityLabel="Voltar para o início"
+        icon={<StethoscopeIcon color="#0e706f" size={28} />}
+      />
+
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerClassName="flex-grow gap-5 px-5 pb-8 pt-4"
+          className="flex-1"
+          contentContainerClassName="flex-grow gap-5 px-5 pt-6"
+          contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-row items-center justify-between">
-            <Pressable
-              onPress={() => navigation.navigate("AdminHome")}
-              accessibilityRole="button"
-              accessibilityLabel="Voltar para o início"
-              className="min-h-[48px] justify-center rounded-lg px-2 active:opacity-70"
-            >
-              <Text className="text-sm font-semibold text-brand underline">
-                Voltar ao início
-              </Text>
-            </Pressable>
-
-            <Text className="text-lg font-bold tracking-tight text-brand-dark">
-              Med<Text className="font-semibold italic text-brand">fácil</Text>
-            </Text>
-          </View>
-
           {createdDoctor ? (
-            <View className="gap-5 pt-4">
-              <View className="items-center gap-3 rounded-3xl border border-line bg-white p-6">
-                <View className="h-14 w-14 items-center justify-center rounded-full bg-brand/10">
-                  <SuccessCheckIcon />
-                </View>
+            <View className="gap-5">
+              <View
+                style={styles.cardShadow}
+                className="items-center gap-4 rounded-3xl border border-[#e6ecee] bg-white p-6"
+              >
+                <Image
+                  source={CHECK_ICON}
+                  resizeMode="contain"
+                  style={{ width: 64, height: 64 }}
+                />
+
                 <Text
                   accessibilityRole="header"
-                  className="text-center text-2xl font-bold text-brand-dark"
+                  className="text-center text-2xl font-bold text-[#004959]"
                 >
                   Médico cadastrado
                 </Text>
-                <Text className="text-center text-sm text-muted">
-                  {createdDoctor.name} (CRM {createdDoctor.crm}) já pode acessar
-                  o sistema com o CPF e a senha inicial informada.
-                </Text>
-                {createdDoctor.specialties.length > 0 ? (
-                  <Text className="text-center text-xs font-semibold text-brand">
-                    Especialidades: {createdDoctor.specialties.join(", ")}
+
+                <View className="w-full gap-1.5 rounded-2xl bg-[#dbf0ef] p-4">
+                  <Text className="text-center text-base font-bold text-[#004959]">
+                    {createdDoctor.name}
                   </Text>
-                ) : null}
+                  <Text className="text-center text-sm font-semibold text-[#0e706f]">
+                    CRM {createdDoctor.crm}
+                  </Text>
+                  {createdDoctor.specialties.length > 0 ? (
+                    <Text className="mt-1 text-center text-xs font-medium text-[#004959]">
+                      Especialidades: {createdDoctor.specialties.join(", ")}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View className="w-full rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4">
+                  <Text className="text-center text-sm font-semibold text-[#004959]">
+                    O acesso já está ativo com o CPF e a senha inicial informada.
+                  </Text>
+                </View>
               </View>
 
               <Button
@@ -240,20 +293,15 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
               />
             </View>
           ) : (
-            <>
-              <View>
-                <Text
-                  accessibilityRole="header"
-                  className="text-3xl font-bold text-ink"
-                >
-                  Cadastrar médico
+            <View className="gap-5">
+              <View
+                style={styles.cardShadow}
+                className="gap-4 rounded-2xl border border-[#e6ecee] bg-white p-5"
+              >
+                <Text className="text-lg font-bold text-[#004959]">
+                  Dados do profissional
                 </Text>
-                <Text className="mt-1 text-base text-muted">
-                  Crie o acesso profissional e vincule as especialidades.
-                </Text>
-              </View>
 
-              <View className="gap-4">
                 <Controller
                   control={control}
                   name="name"
@@ -361,132 +409,257 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
                     />
                   )}
                 />
+              </View>
 
-                <View className="gap-2 pt-1">
-                  <View className="flex-row items-center justify-between gap-2">
-                    <Text className="text-sm font-semibold text-ink">
-                      Especialidades
+              <View
+                style={styles.cardShadow}
+                className="gap-3 rounded-2xl border border-[#e6ecee] bg-white p-5"
+              >
+                <View className="flex-row items-center justify-between gap-2">
+                  <Text className="text-lg font-bold text-[#004959]">
+                    Especialidades médicas
+                  </Text>
+                  <Pressable
+                    onPress={() => setModalOpen(true)}
+                    disabled={isSubmitting}
+                    accessibilityRole="button"
+                    accessibilityLabel="Adicionar nova especialidade"
+                    className="min-h-[48px] items-center justify-center rounded-xl border border-[#0e706f] bg-white px-4 active:opacity-80"
+                  >
+                    <Text className="text-sm font-bold text-[#0e706f]">
+                      + Nova
                     </Text>
-                    <Pressable
-                      onPress={() => setModalOpen(true)}
-                      disabled={isSubmitting}
-                      accessibilityRole="button"
-                      accessibilityLabel="Nova especialidade"
-                      className="min-h-[48px] justify-center px-2 active:opacity-70"
-                    >
-                      <Text className="text-sm font-bold text-brand underline">
-                        + Nova especialidade
-                      </Text>
-                    </Pressable>
-                  </View>
+                  </Pressable>
+                </View>
 
-                  {specStatus === "loading" ? (
-                    <View className="min-h-[72px] items-center justify-center gap-2 rounded-2xl border border-line bg-white p-4">
-                      <ActivityIndicator size="small" color="#0e706f" />
-                      <Text className="text-xs text-muted">
-                        Carregando especialidades...
-                      </Text>
-                    </View>
-                  ) : null}
+                <Controller
+                  control={control}
+                  name="specialtyIds"
+                  render={({ field: { value, onChange } }) => {
+                    const selectedItems = specialties.filter((s) =>
+                      value.includes(s.id)
+                    );
+                    const summaryText =
+                      specStatus === "loading" && specialties.length === 0
+                        ? "Carregando especialidades..."
+                        : selectedItems.length > 0
+                          ? selectedItems.map((s) => s.name).join(", ")
+                          : "Selecione uma ou mais especialidades";
 
-                  {specStatus === "error" ? (
-                    <View className="gap-3 rounded-2xl border border-line bg-white p-4">
-                      <Text className="text-sm text-ink">
-                        Não foi possível carregar as especialidades.
-                      </Text>
-                      <Button
-                        label="Tentar novamente"
-                        variant="outline"
-                        onPress={() => setReloadKey((k) => k + 1)}
-                      />
-                    </View>
-                  ) : null}
+                    const { haloStyle, boxStyle } = getFieldFrameStyles({
+                      active: dropdownOpen,
+                      error: Boolean(errors.specialtyIds?.message),
+                    });
 
-                  {specStatus === "ready" && specialties.length === 0 ? (
-                    <View className="rounded-2xl border border-line bg-white p-4">
-                      <Text className="text-sm text-muted">
-                        Nenhuma especialidade cadastrada ainda. Crie a primeira
-                        em "+ Nova especialidade".
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {specStatus === "ready" && specialties.length > 0 ? (
-                    <Controller
-                      control={control}
-                      name="specialtyIds"
-                      render={({ field: { value, onChange } }) => (
-                        <View className="flex-row flex-wrap gap-2">
-                          {specialties.map((specialty) => {
-                            const selected = value.includes(specialty.id);
-                            return (
-                              <Pressable
-                                key={specialty.id}
-                                disabled={isSubmitting}
-                                onPress={() => {
-                                  const next = selected
-                                    ? value.filter((id) => id !== specialty.id)
-                                    : [...value, specialty.id];
-                                  onChange(next);
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel={specialty.name}
-                                accessibilityState={{ selected }}
-                                className={`min-h-[48px] items-center justify-center rounded-full border-2 px-4 active:opacity-85 ${
-                                  selected
-                                    ? "border-brand bg-brand"
-                                    : "border-line bg-white"
+                    return (
+                      <View className="gap-3">
+                        <View style={haloStyle}>
+                          <Pressable
+                            onPress={() => setDropdownOpen(true)}
+                            disabled={isSubmitting}
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                              selectedItems.length > 0
+                                ? `Especialidades selecionadas: ${summaryText}. Toque para alterar`
+                                : "Selecionar especialidades médicas"
+                            }
+                            accessibilityState={{
+                              expanded: dropdownOpen,
+                              disabled: isSubmitting,
+                            }}
+                            style={boxStyle}
+                            className={`min-h-[64px] flex-row items-center justify-between gap-3 px-4 py-2.5 active:opacity-85 ${
+                              isSubmitting ? "opacity-60" : ""
+                            }`}
+                          >
+                            <View className="min-w-0 flex-1">
+                              <Text className="text-xs font-medium text-[#6b7280]">
+                                Especialidades
+                              </Text>
+                              <Text
+                                numberOfLines={1}
+                                className={`mt-0.5 text-base font-bold ${
+                                  selectedItems.length > 0
+                                    ? "text-[#004959]"
+                                    : "text-[#6b7280]"
                                 }`}
                               >
-                                <Text
-                                  className={`text-sm font-semibold ${
-                                    selected ? "text-white" : "text-ink"
-                                  }`}
-                                >
-                                  {specialty.name}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
+                                {summaryText}
+                              </Text>
+                            </View>
+
+                            <ChevronDownIcon color="#0e706f" />
+                          </Pressable>
                         </View>
-                      )}
-                    />
-                  ) : null}
 
-                  {errors.specialtyIds?.message ? (
-                    <Text
-                      accessibilityRole="alert"
-                      className="text-xs font-medium text-danger"
-                    >
-                      {errors.specialtyIds.message}
-                    </Text>
-                  ) : null}
-                </View>
+                        {selectedItems.length > 0 ? (
+                          <View className="flex-row flex-wrap gap-2">
+                            {selectedItems.map((item) => (
+                              <View
+                                key={item.id}
+                                className="rounded-full bg-[#dbf0ef] px-3 py-1.5"
+                              >
+                                <Text className="text-xs font-bold text-[#004959]">
+                                  {item.name}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
 
-                {errors.root?.message ? (
-                  <View className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3">
-                    <Text
-                      accessibilityRole="alert"
-                      className="text-center text-sm font-medium text-danger"
-                    >
-                      {errors.root.message}
-                    </Text>
-                  </View>
+                        <Modal
+                          open={dropdownOpen}
+                          onClose={() => setDropdownOpen(false)}
+                          title="Escolha as especialidades"
+                          closeLabel="Fechar lista de especialidades"
+                        >
+                          <ScrollView
+                            className="max-h-[420px]"
+                            showsVerticalScrollIndicator={false}
+                            contentContainerClassName="gap-2.5 pb-2"
+                          >
+                            {specStatus === "loading" ? (
+                              <View className="min-h-[120px] items-center justify-center gap-3 rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] p-6">
+                                <ActivityIndicator
+                                  size="small"
+                                  color="#0e706f"
+                                />
+                                <Text className="text-sm text-[#6b7280]">
+                                  Carregando especialidades...
+                                </Text>
+                              </View>
+                            ) : null}
+
+                            {specStatus === "error" ? (
+                              <View className="gap-3 rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] p-4">
+                                <Text className="text-sm font-medium text-[#004959]">
+                                  Não foi possível carregar as especialidades.
+                                </Text>
+                                <Button
+                                  label="Tentar novamente"
+                                  variant="outline"
+                                  onPress={() => setReloadKey((k) => k + 1)}
+                                />
+                              </View>
+                            ) : null}
+
+                            {specStatus === "ready" &&
+                            specialties.length === 0 ? (
+                              <View className="rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4">
+                                <Text className="text-sm font-semibold text-[#004959]">
+                                  Nenhuma especialidade cadastrada ainda. Crie
+                                  uma nova especialidade abaixo.
+                                </Text>
+                              </View>
+                            ) : null}
+
+                            {specStatus === "ready" && specialties.length > 0
+                              ? specialties.map((specialty) => {
+                                  const isSelected = value.includes(
+                                    specialty.id
+                                  );
+                                  return (
+                                    <Pressable
+                                      key={specialty.id}
+                                      disabled={isSubmitting}
+                                      onPress={() => {
+                                        const next = isSelected
+                                          ? value.filter(
+                                              (id) => id !== specialty.id
+                                            )
+                                          : [...value, specialty.id];
+                                        onChange(next);
+                                      }}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={
+                                        specialty.description
+                                          ? `${specialty.name}. ${specialty.description}`
+                                          : specialty.name
+                                      }
+                                      accessibilityState={{
+                                        selected: isSelected,
+                                      }}
+                                      className={`min-h-[56px] flex-row items-center justify-between gap-3 rounded-2xl border-2 px-4 py-3 active:opacity-85 ${
+                                        isSelected
+                                          ? "border-[#0e706f] bg-[#dbf0ef]/60"
+                                          : "border-[#e6ecee] bg-white"
+                                      }`}
+                                    >
+                                      <Image
+                                        source={getSpecialtyImage(
+                                          specialty.name
+                                        )}
+                                        resizeMode="contain"
+                                        className="h-10 w-10 shrink-0"
+                                      />
+
+                                      <View className="min-w-0 flex-1">
+                                        <Text className="text-base font-bold text-[#004959]">
+                                          {specialty.name}
+                                        </Text>
+                                        {specialty.description ? (
+                                          <Text className="mt-0.5 text-xs text-[#6b7280]">
+                                            {specialty.description}
+                                          </Text>
+                                        ) : null}
+                                      </View>
+
+                                      {isSelected ? <CheckIcon /> : null}
+                                    </Pressable>
+                                  );
+                                })
+                              : null}
+                          </ScrollView>
+
+                          <View className="gap-2.5 pt-3">
+                            <Button
+                              label="Confirmar seleção"
+                              onPress={() => setDropdownOpen(false)}
+                            />
+                            <Button
+                              label="+ Nova especialidade"
+                              variant="outline"
+                              onPress={() => {
+                                setDropdownOpen(false);
+                                setModalOpen(true);
+                              }}
+                            />
+                          </View>
+                        </Modal>
+                      </View>
+                    );
+                  }}
+                />
+
+                {errors.specialtyIds?.message ? (
+                  <Text
+                    accessibilityRole="alert"
+                    className="text-xs font-medium text-danger"
+                  >
+                    {errors.specialtyIds.message}
+                  </Text>
                 ) : null}
-
-                <View className="pt-2">
-                  <Button
-                    label={
-                      isSubmitting ? "Cadastrando..." : "Cadastrar médico"
-                    }
-                    loading={isSubmitting}
-                    onPress={() => {
-                      void handleSubmit(onSubmit)();
-                    }}
-                  />
-                </View>
               </View>
-            </>
+
+              {errors.root?.message ? (
+                <View className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3">
+                  <Text
+                    accessibilityRole="alert"
+                    className="text-center text-sm font-medium text-danger"
+                  >
+                    {errors.root.message}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Button
+                label={isSubmitting ? "Cadastrando..." : "Cadastrar médico"}
+                loading={isSubmitting}
+                onPress={() => {
+                  void handleSubmit(onSubmit)();
+                }}
+              />
+            </View>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -496,6 +669,6 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
         onClose={() => setModalOpen(false)}
         onCreated={handleSpecialtyCreated}
       />
-    </SafeAreaView>
+    </View>
   );
 }

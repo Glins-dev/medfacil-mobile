@@ -90,7 +90,14 @@ function SummaryRow({
 
 // Tela de confirmacao exibida apos o paciente concluir um novo agendamento.
 export function PatientBookingConfirmedScreen({ navigation, route }: Props) {
-  const { specialty, doctorName, doctorCrm, dateTime } = route.params;
+  const {
+    specialty,
+    doctorName,
+    doctorCrm,
+    dateTime,
+    hospitalName,
+    hospitalAddress,
+  } = route.params;
   const insets = useSafeAreaInsets();
   const androidTopFallback =
     Platform.OS === "android" && insets.top === 0
@@ -204,7 +211,11 @@ export function PatientBookingConfirmedScreen({ navigation, route }: Props) {
               />
               <SummaryRow
                 label="Local"
-                value={`${CLINIC_INFO.unitLabel} · ${CLINIC_INFO.address}`}
+                value={hospitalName ?? CLINIC_INFO.name}
+              />
+              <SummaryRow
+                label="Endereço"
+                value={hospitalAddress ?? CLINIC_INFO.address}
                 isLast
               />
             </View>

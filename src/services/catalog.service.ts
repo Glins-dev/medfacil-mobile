@@ -1,10 +1,13 @@
 import { api } from "@/services/api";
+import { useAdminStore } from "@/stores/admin.store";
+import { formatTime, getClinicDateKey } from "@/utils/date";
+import {
+  normalizeSpecialty,
+  type RawSpecialtyRecord,
+  type SpecialtyCatalogItem,
+} from "@/utils/specialties";
 
-export interface Specialty {
-  id: string;
-  name: string;
-  description: string | null;
-}
+export type Specialty = SpecialtyCatalogItem;
 
 export interface Doctor {
   id: string;
@@ -22,39 +25,103 @@ export interface DoctorWithAvailability extends Doctor {
   totalSlots: number;
 }
 
-interface RawSpecialty {
-  id: string;
-  nome: string;
-  descricao: string | null;
-}
-
 export const catalogService = {
   listSpecialties: async (): Promise<Specialty[]> => {
-    const { data } = await api.get<{ specialties: RawSpecialty[] }>(
+    const { data } = await api.get<{ specialties: RawSpecialtyRecord[] }>(
       "/catalog/specialties"
     );
 
-    return data.specialties.map((s) => ({
-      id: s.id,
-      name: s.nome,
-      description: s.descricao,
-    }));
+    const normalized = data.specialties
+      .map(normalizeSpecialty)
+      .filter((item): item is Specialty => item !== null);
+
+    useAdminStore.getState().syncSpecialties(normalized);
+    return normalized;
   },
 
   listDoctors: async (specialtyId: string): Promise<Doctor[]> => {
     const { data } = await api.get<{ doctors: Doctor[] }>(
       `/catalog/specialties/${specialtyId}/doctors`
     );
-    return data.doctors;
+
+    const adminState = useAdminStore.getState();
+    const deletedSet = new Set(adminState.deletedDoctorIds);
+    const merged = new Map<string, Doctor>();
+
+    for (const doctor of data.doctors) {
+      if (!deletedSet.has(doctor.id)) {
+        merged.set(doctor.id, doctor);
+      }
+    }
+
+    for (const localDoctor of adminState.doctors) {
+      if (
+        !deletedSet.has(localDoctor.id) &&
+        localDoctor.specialtyIds.includes(specialtyId) &&
+        !merged.has(localDoctor.id)
+      ) {
+        merged.set(localDoctor.id, {
+          id: localDoctor.id,
+          name: localDoctor.name,
+          crm: localDoctor.crm,
+        });
+      }
+    }
+
+    return [...merged.values()];
   },
 
-  // Horarios livres ("HH:mm", no horario da clinica) de um medico em uma data.
+  // Horarios livres ("HH:mm", no horario da clinica) de um medico em uma data, integrados aos ajustes administrativos.
   listSlots: async (doctorId: string, date: string): Promise<string[]> => {
-    const { data } = await api.get<{ slots: string[] }>(
-      `/catalog/doctors/${doctorId}/slots`,
-      { params: { date } }
+    const adminState = useAdminStore.getState();
+    const storedDoctor = adminState.doctors.find((d) => d.id === doctorId);
+    let remoteSlots: string[] = [];
+
+    try {
+      const { data } = await api.get<{ slots: string[] }>(
+        `/catalog/doctors/${doctorId}/slots`,
+        { params: { date } }
+      );
+      remoteSlots = data.slots;
+    } catch (error) {
+      if (storedDoctor?.source !== "local") {
+        throw error;
+      }
+    }
+
+    const removedTimes = new Set(
+      adminState.removedSlots
+        .filter((item) => item.doctorId === doctorId && item.date === date)
+        .map((item) => item.time)
     );
-    return data.slots;
+
+    const bookedLocalTimes = new Set(
+      adminState.localAppointments
+        .filter(
+          (item) =>
+            item.doctorId === doctorId &&
+            item.status !== "CANCELADO" &&
+            getClinicDateKey(item.dateTime) === date
+        )
+        .map((item) => formatTime(item.dateTime))
+    );
+
+    const addedTimes = adminState.scheduleSlots
+      .filter((item) => item.doctorId === doctorId && item.date === date)
+      .map((item) => item.time);
+
+    const merged = new Set<string>(
+      remoteSlots.filter(
+        (slot) => !removedTimes.has(slot) && !bookedLocalTimes.has(slot)
+      )
+    );
+    for (const added of addedTimes) {
+      if (!bookedLocalTimes.has(added)) {
+        merged.add(added);
+      }
+    }
+
+    return [...merged].sort((a, b) => a.localeCompare(b));
   },
 
   // Retorna apenas as datas que possuem ao menos um horario livre, ordenadas.

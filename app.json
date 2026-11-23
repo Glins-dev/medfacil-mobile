@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "br.com.medfacil.mobile",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#0e706f"
       }

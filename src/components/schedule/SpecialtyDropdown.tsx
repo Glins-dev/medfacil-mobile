@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { Button, Modal, NoticeCard } from "@/components";
+import { Button, getFieldFrameStyles, Modal, NoticeCard } from "@/components";
 import type { Specialty } from "@/services/catalog.service";
 import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
@@ -75,22 +75,29 @@ export function SpecialtyDropdown({
       ? "Carregando..."
       : "Selecione uma especialidade";
 
+  const { haloStyle, boxStyle } = getFieldFrameStyles({
+    active: open,
+    error,
+  });
+
   return (
     <View>
-      <Pressable
-        onPress={() => setOpen(true)}
-        disabled={disabled}
-        accessibilityRole="button"
-        accessibilityLabel={
-          selectedSpecialty
-            ? `Especialidade: ${selectedSpecialty.name}. Toque para alterar`
-            : "Selecionar especialidade"
-        }
-        accessibilityState={{ expanded: open, disabled }}
-        className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-2.5 active:opacity-85 ${
-          selectedSpecialty ? "border-brand" : "border-brand/70"
-        } ${disabled ? "opacity-60" : ""}`}
-      >
+      <View style={haloStyle}>
+        <Pressable
+          onPress={() => setOpen(true)}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel={
+            selectedSpecialty
+              ? `Especialidade: ${selectedSpecialty.name}. Toque para alterar`
+              : "Selecionar especialidade"
+          }
+          accessibilityState={{ expanded: open, disabled }}
+          style={boxStyle}
+          className={`min-h-[64px] flex-row items-center justify-between gap-3 px-4 py-2.5 active:opacity-85 ${
+            disabled ? "opacity-60" : ""
+          }`}
+        >
         <View className="min-w-0 flex-1">
           <Text className="text-xs font-medium text-muted">Especialidade</Text>
           <Text
@@ -104,7 +111,8 @@ export function SpecialtyDropdown({
         </View>
 
         <ChevronDownIcon color="#0e706f" />
-      </Pressable>
+        </Pressable>
+      </View>
 
       <Modal
         open={open}

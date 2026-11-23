@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
 
 import { Button, Input, Modal } from "@/components";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/schemas/admin.schema";
 import { adminService, type AdminSpecialty } from "@/services/admin.service";
 import { getApiErrorMessage, getApiErrorStatus } from "@/services/api";
+import { getSpecialtyImage } from "@/utils/specialtyIcons";
 
 export interface NewSpecialtyModalProps {
   open: boolean;
@@ -125,22 +126,22 @@ export function NewSpecialtyModal({
         contentContainerClassName="gap-5 pb-2"
       >
         <View className="gap-2">
-          <Text className="text-sm font-bold text-ink">
+          <Text className="text-sm font-bold text-[#004959]">
             Cadastradas{status === "ready" ? ` (${items.length})` : ""}
           </Text>
 
           {status === "loading" ? (
-            <View className="min-h-[80px] items-center justify-center gap-2 rounded-2xl border border-line bg-brand-cream p-4">
+            <View className="min-h-[80px] items-center justify-center gap-2 rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] p-4">
               <ActivityIndicator size="small" color="#0e706f" />
-              <Text className="text-xs text-muted">
+              <Text className="text-xs text-[#6b7280]">
                 Carregando especialidades...
               </Text>
             </View>
           ) : null}
 
           {status === "error" ? (
-            <View className="gap-3 rounded-2xl border border-line bg-brand-cream p-4">
-              <Text className="text-sm text-ink">
+            <View className="gap-3 rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] p-4">
+              <Text className="text-sm text-[#004959]">
                 Não foi possível carregar as especialidades.
               </Text>
               <Button
@@ -152,8 +153,8 @@ export function NewSpecialtyModal({
           ) : null}
 
           {status === "ready" && items.length === 0 ? (
-            <View className="rounded-2xl border border-line bg-brand-cream p-4">
-              <Text className="text-sm text-muted">
+            <View className="rounded-2xl border border-[#e5b12c] bg-[#F7C343] p-4">
+              <Text className="text-sm font-semibold text-[#004959]">
                 Nenhuma especialidade cadastrada ainda. Adicione a primeira
                 abaixo.
               </Text>
@@ -165,22 +166,30 @@ export function NewSpecialtyModal({
               {items.map((specialty) => (
                 <View
                   key={specialty.id}
-                  className="flex-row items-start justify-between gap-3 rounded-2xl border border-line bg-white px-4 py-3"
+                  className="flex-row items-center justify-between gap-3 rounded-2xl border border-[#e6ecee] bg-white px-4 py-3"
                 >
+                  <View className="h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f6f8f9]">
+                    <Image
+                      source={getSpecialtyImage(specialty.name)}
+                      resizeMode="contain"
+                      style={{ width: 28, height: 28 }}
+                    />
+                  </View>
+
                   <View className="min-w-0 flex-1">
-                    <Text className="text-sm font-bold text-ink">
+                    <Text className="text-sm font-bold text-[#004959]">
                       {specialty.name}
                     </Text>
                     {specialty.description ? (
-                      <Text className="mt-0.5 text-xs text-muted">
+                      <Text className="mt-0.5 text-xs text-[#6b7280]">
                         {specialty.description}
                       </Text>
                     ) : null}
                   </View>
 
                   {specialty.id === justAddedId ? (
-                    <View className="rounded-full bg-brand/15 px-2.5 py-1">
-                      <Text className="text-xs font-bold text-brand-dark">
+                    <View className="rounded-full bg-[#dbf0ef] px-2.5 py-1">
+                      <Text className="text-xs font-bold text-[#004959]">
                         Nova
                       </Text>
                     </View>
@@ -191,8 +200,10 @@ export function NewSpecialtyModal({
           ) : null}
         </View>
 
-        <View className="gap-4 border-t border-line pt-4">
-          <Text className="text-sm font-bold text-ink">Adicionar nova</Text>
+        <View className="gap-4 border-t border-[#e6ecee] pt-4">
+          <Text className="text-sm font-bold text-[#004959]">
+            Adicionar nova
+          </Text>
 
           <Controller
             control={control}

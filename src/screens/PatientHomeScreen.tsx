@@ -18,8 +18,8 @@ import {
   Button,
   DateBadge,
   FeatureCard,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   MainCard,
-  Modal,
   NoticeCard,
   PatientScreenHeader,
 } from "@/components";
@@ -34,6 +34,7 @@ import {
   useAppointmentStore,
   useNextAppointment,
 } from "@/stores/appointment.store";
+import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { describeDate, formatTime, getClinicDateKey } from "@/utils/date";
 import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
@@ -61,12 +62,13 @@ const styles = StyleSheet.create({
 // Tela inicial do paciente alinhada ao layout oficial com hero, proxima consulta e funcoes.
 export function PatientHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { appointment, status, reload } = useNextAppointment();
   const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [refreshing, setRefreshing] = useState(false);
-  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const appointmentDateInfo = appointment
@@ -87,11 +89,28 @@ export function PatientHomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await authService.logout();
+    } catch {
+      // Logout local ocorre independentemente da resposta do servidor.
+    } finally {
+      logout();
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-[#f8fbfb]">
       <PatientScreenHeader
         title={`Olá${firstName ? `, ${firstName}` : ""}`}
         subtitle="O que você precisa hoje?"
+        onLogoutPress={() => {
+          void handleLogout();
+        }}
+        logoutDisabled={loggingOut}
         icon={<HomeIcon color="#0e706f" size={28} />}
       />
 
@@ -180,7 +199,9 @@ export function PatientHomeScreen({ navigation }: Props) {
                   numberOfLines={1}
                   className="mt-1 text-sm font-semibold text-[#0e706f]"
                 >
-                  {`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}${nextStatusSuffix}`}
+                  {`${formatTime(appointment.dateTime)} · ${
+                    appointment.hospitalName ?? CLINIC_INFO.unitLabel
+                  }${nextStatusSuffix}`}
                 </Text>
               </View>
             </Pressable>
@@ -218,31 +239,13 @@ export function PatientHomeScreen({ navigation }: Props) {
 
             <FeatureCard
               title="Minha saúde"
-              description="Acompanhe informações importantes sobre sua saúde."
+              description="Preencha seu pré-prontuário para agilizar consultas."
               imageSource={MEDICAL_IMAGES.heart}
-              onPress={() => setComingSoonTitle("Minha saúde")}
+              onPress={() => navigation.navigate("PatientHealth")}
             />
           </View>
         </View>
       </ScrollView>
-
-      <Modal
-        open={Boolean(comingSoonTitle)}
-        onClose={() => setComingSoonTitle(null)}
-        title={comingSoonTitle ?? "Funcionalidade em breve"}
-        closeLabel="Fechar aviso"
-      >
-        <View className="gap-4">
-          <Text className="text-base text-ink">
-            Funcionalidade em breve. Em atualizações futuras você poderá acessar{" "}
-            {comingSoonTitle?.toLowerCase()} diretamente por aqui.
-          </Text>
-          <Button
-            label="Entendi"
-            onPress={() => setComingSoonTitle(null)}
-          />
-        </View>
-      </Modal>
     </View>
   );
 }

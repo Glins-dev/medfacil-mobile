@@ -11,7 +11,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Button, Modal, PatientScreenHeader } from "@/components";
+import {
+  Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
+  Modal,
+  PatientScreenHeader,
+} from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import { UserIcon } from "@/navigation/icons";
 import type { PatientTabParamList } from "@/navigation/types";
@@ -151,8 +156,8 @@ function ProfileFieldRow({
   );
 }
 
-// Tela de perfil do paciente com cabecalho verde-agua, opcoes de conta, seguranca e sair.
-export function PatientProfileScreen({ navigation }: Props) {
+// Tela de perfil do paciente com cabecalho verde-agua, opcoes de conta e seguranca.
+export function PatientProfileScreen(_props: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -162,12 +167,15 @@ export function PatientProfileScreen({ navigation }: Props) {
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(true);
 
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const fullName = user?.name?.trim() || "Não informado";
   const age = calculateAge(user?.birthDate ?? user?.dataNascimento);
   const ageLabel =
     age !== null ? `${age} ${age === 1 ? "ano" : "anos"}` : "Não informada";
+  const sexLabel = user?.sexo?.trim() || "Não informado";
+  const addressLabel =
+    user?.endereco?.trim() || user?.address?.trim() || "Não informado";
   const formattedCpf = user?.cpf ? maskCpf(user.cpf) : "Não informado";
   const registrationNumber =
     user?.matricula?.trim() ||
@@ -200,8 +208,10 @@ export function PatientProfileScreen({ navigation }: Props) {
       <PatientScreenHeader
         title="Perfil"
         subtitle="Dados, preferências e ajuda."
-        onBackPress={() => navigation.navigate("PatientHome")}
-        backAccessibilityLabel="Voltar para início"
+        onLogoutPress={() => {
+          void handleLogout();
+        }}
+        logoutDisabled={loggingOut}
         icon={<UserIcon color="#0e706f" size={28} />}
       />
 
@@ -260,25 +270,6 @@ export function PatientProfileScreen({ navigation }: Props) {
               </Text>
             </View>
           </View>
-
-          <View className="mt-auto pt-2">
-            <Pressable
-              onPress={() => {
-                void handleLogout();
-              }}
-              disabled={loggingOut}
-              accessibilityRole="button"
-              accessibilityLabel="Sair da conta"
-              accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-              className={`min-h-[48px] w-full items-center justify-center rounded-xl border-2 border-danger bg-white px-6 py-3 active:opacity-85 ${
-                loggingOut ? "opacity-60" : ""
-              }`}
-            >
-              <Text className="text-base font-semibold text-danger">
-                {loggingOut ? "Saindo..." : "Sair da conta"}
-              </Text>
-            </Pressable>
-          </View>
       </ScrollView>
 
       <Modal
@@ -292,7 +283,9 @@ export function PatientProfileScreen({ navigation }: Props) {
             <View className="rounded-2xl border border-line bg-[#f6f8f9] px-4 py-1">
               <ProfileFieldRow label="Nome completo" value={fullName} />
               <ProfileFieldRow label="Idade" value={ageLabel} />
+              <ProfileFieldRow label="Sexo" value={sexLabel} />
               <ProfileFieldRow label="CPF" value={formattedCpf} />
+              <ProfileFieldRow label="Endereço" value={addressLabel} />
               {user?.email ? (
                 <ProfileFieldRow label="E-mail" value={user.email} />
               ) : null}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidScheduleDate, isValidTimeSlot } from "@/utils/adminRules";
 import { isValidCpf, onlyDigits } from "@/utils/cpf";
 import { isValidCrm } from "@/utils/masks";
 
@@ -52,3 +53,41 @@ export const createDoctorSchema = z.object({
 });
 
 export type CreateDoctorFormData = z.infer<typeof createDoctorSchema>;
+
+export const createHospitalSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, "Informe o nome do hospital.")
+    .max(120, "Nome muito longo."),
+  address: z
+    .string()
+    .trim()
+    .min(5, "Informe o endereço completo.")
+    .max(200, "Endereço muito longo."),
+  specialtyIds: z
+    .array(z.string())
+    .min(1, "Selecione ao menos uma especialidade."),
+});
+
+export type CreateHospitalFormData = z.infer<typeof createHospitalSchema>;
+
+export const createScheduleSlotSchema = z.object({
+  doctorId: z.string().trim().min(1, "Selecione um médico."),
+  hospitalId: z.string().optional(),
+  date: z
+    .string()
+    .trim()
+    .min(1, "Informe a data no formato DD/MM/AAAA.")
+    .refine(
+      (value) => isValidScheduleDate(value),
+      "Informe uma data válida igual ou posterior a hoje."
+    ),
+  time: z
+    .string()
+    .trim()
+    .min(1, "Informe o horário no formato HH:mm.")
+    .refine(isValidTimeSlot, "Informe um horário válido (ex.: 08:30)."),
+});
+
+export type CreateScheduleSlotFormData = z.infer<typeof createScheduleSlotSchema>;
