@@ -5,6 +5,7 @@ import { PatientAppointmentDetailsScreen } from "@/screens/PatientAppointmentDet
 import { PatientAttendanceConfirmedScreen } from "@/screens/PatientAttendanceConfirmedScreen";
 import { PatientBookingConfirmedScreen } from "@/screens/PatientBookingConfirmedScreen";
 import { PatientConfirmAttendanceScreen } from "@/screens/PatientConfirmAttendanceScreen";
+import { PatientHealthScreen } from "@/screens/PatientHealthScreen";
 import { PatientPrescriptionsScreen } from "@/screens/PatientPrescriptionsScreen";
 import { PatientTabs } from "./PatientTabs";
 import type { PatientStackParamList } from "./types";
@@ -44,6 +45,10 @@ export function PatientStack() {
       <Stack.Screen
         name="PatientPrescriptions"
         component={PatientPrescriptionsScreen}
+      />
+      <Stack.Screen
+        name="PatientHealth"
+        component={PatientHealthScreen}
       />
     </Stack.Navigator>
   );

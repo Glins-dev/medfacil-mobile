@@ -20,7 +20,6 @@ import {
   FeatureCard,
   FLOATING_TAB_BAR_SCROLL_OFFSET,
   MainCard,
-  Modal,
   NoticeCard,
   PatientScreenHeader,
 } from "@/components";
@@ -68,7 +67,6 @@ export function PatientHomeScreen({ navigation }: Props) {
   const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
@@ -241,31 +239,13 @@ export function PatientHomeScreen({ navigation }: Props) {
 
             <FeatureCard
               title="Minha saúde"
-              description="Acompanhe informações importantes sobre sua saúde."
+              description="Preencha seu pré-prontuário para agilizar consultas."
               imageSource={MEDICAL_IMAGES.heart}
-              onPress={() => setComingSoonTitle("Minha saúde")}
+              onPress={() => navigation.navigate("PatientHealth")}
             />
           </View>
         </View>
       </ScrollView>
-
-      <Modal
-        open={Boolean(comingSoonTitle)}
-        onClose={() => setComingSoonTitle(null)}
-        title={comingSoonTitle ?? "Funcionalidade em breve"}
-        closeLabel="Fechar aviso"
-      >
-        <View className="gap-4">
-          <Text className="text-base text-ink">
-            Funcionalidade em breve. Em atualizações futuras você poderá acessar{" "}
-            {comingSoonTitle?.toLowerCase()} diretamente por aqui.
-          </Text>
-          <Button
-            label="Entendi"
-            onPress={() => setComingSoonTitle(null)}
-          />
-        </View>
-      </Modal>
     </View>
   );
 }

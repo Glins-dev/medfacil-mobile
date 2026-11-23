@@ -32,6 +32,7 @@ export type PatientStackParamList = {
   PatientAttendanceConfirmed: { appointmentId: string };
   PatientBookingConfirmed: BookingConfirmedParams;
   PatientPrescriptions: undefined;
+  PatientHealth: undefined;
 };
 
 export type DoctorTabParamList = {

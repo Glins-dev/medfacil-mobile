@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   FLOATING_TAB_BAR_SCROLL_OFFSET,
   SendPrescriptionModal,
 } from "@/components";
+import { PatientPreChartModal } from "@/components/doctor/PatientPreChartModal";
 import { StethoscopeIcon } from "@/navigation/icons";
 import type { DoctorTabParamList } from "@/navigation/types";
 import { getApiErrorMessage } from "@/services/api";
@@ -125,11 +127,13 @@ function DoctorAppointmentCard({
   todayKey,
   highlighted = false,
   onSendPrescription,
+  onViewPreChart,
 }: {
   item: DoctorAppointment;
   todayKey: string;
   highlighted?: boolean;
   onSendPrescription: () => void;
+  onViewPreChart: () => void;
 }) {
   const dateInfo = describeDate(getClinicDateKey(item.dateTime));
   const statusStyle = resolveStatusBadgeStyle(item, highlighted);
@@ -171,12 +175,25 @@ function DoctorAppointmentCard({
         </View>
       </View>
 
-      <Button
-        label="Enviar receita"
-        variant="primary"
-        accessibilityLabel={`Enviar receita para ${item.patientName}`}
-        onPress={onSendPrescription}
-      />
+      <View className="gap-2.5">
+        <Button
+          label="Enviar receita"
+          variant="primary"
+          accessibilityLabel={`Enviar receita para ${item.patientName}`}
+          onPress={onSendPrescription}
+        />
+
+        <Pressable
+          onPress={onViewPreChart}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver pré-prontuário de ${item.patientName}`}
+          className="min-h-[48px] w-full items-center justify-center rounded-2xl border-[1.5px] border-[#0e706f] bg-white px-4 py-3 active:opacity-80"
+        >
+          <Text className="text-sm font-bold text-[#0e706f]">
+            Ver pré-prontuário
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -192,6 +209,8 @@ export function DoctorHomeScreen(_props: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [prescriptionTarget, setPrescriptionTarget] =
+    useState<DoctorAppointment | null>(null);
+  const [preChartTarget, setPreChartTarget] =
     useState<DoctorAppointment | null>(null);
   const [sentNotice, setSentNotice] = useState("");
 
@@ -393,6 +412,7 @@ export function DoctorHomeScreen(_props: Props) {
                 setSentNotice("");
                 setPrescriptionTarget(nextAppointment);
               }}
+              onViewPreChart={() => setPreChartTarget(nextAppointment)}
             />
           </View>
         ) : null}
@@ -419,6 +439,7 @@ export function DoctorHomeScreen(_props: Props) {
                         setSentNotice("");
                         setPrescriptionTarget(item);
                       }}
+                      onViewPreChart={() => setPreChartTarget(item)}
                     />
                   ))}
                 </View>
@@ -437,6 +458,11 @@ export function DoctorHomeScreen(_props: Props) {
             `Receita de ${created.medicationName} (${created.dosageMg}) enviada para ${created.patientName}.`
           );
         }}
+      />
+
+      <PatientPreChartModal
+        appointment={preChartTarget}
+        onClose={() => setPreChartTarget(null)}
       />
     </View>
   );
