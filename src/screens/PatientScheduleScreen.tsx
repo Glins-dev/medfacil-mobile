@@ -16,6 +16,7 @@ import Svg, { Path } from "react-native-svg";
 
 import {
   Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   getFieldFrameStyles,
   Modal,
   NoticeCard,
@@ -167,7 +168,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const deletedDoctorIds = useAdminStore((s) => s.deletedDoctorIds);
   const hospitals = useAdminStore((s) => s.hospitals);
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const [step, setStep] = useState<ScheduleStepNumber>(1);
   const [specialtyId, setSpecialtyId] = useState<string | null>(null);

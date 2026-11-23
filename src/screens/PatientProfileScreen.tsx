@@ -11,7 +11,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Button, Modal, PatientScreenHeader } from "@/components";
+import {
+  Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
+  Modal,
+  PatientScreenHeader,
+} from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import { UserIcon } from "@/navigation/icons";
 import type { PatientTabParamList } from "@/navigation/types";
@@ -162,7 +167,7 @@ export function PatientProfileScreen({ navigation }: Props) {
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(true);
 
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const fullName = user?.name?.trim() || "Não informado";
   const age = calculateAge(user?.birthDate ?? user?.dataNascimento);

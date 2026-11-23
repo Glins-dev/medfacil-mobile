@@ -18,6 +18,7 @@ import {
   Button,
   DateBadge,
   FeatureCard,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   MainCard,
   Modal,
   NoticeCard,
@@ -66,7 +67,7 @@ export function PatientHomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const appointmentDateInfo = appointment

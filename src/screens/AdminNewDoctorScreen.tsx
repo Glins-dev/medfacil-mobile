@@ -20,6 +20,7 @@ import Svg, { Path } from "react-native-svg";
 import {
   AppScreenHeader,
   Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   getFieldFrameStyles,
   Input,
   Modal,
@@ -106,7 +107,7 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
   );
 
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const {
     control,

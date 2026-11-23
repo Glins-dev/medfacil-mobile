@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppScreenHeader } from "@/components";
+import {
+  AppScreenHeader,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
+} from "@/components";
 
 export interface PlaceholderScreenOptions {
   subtitle?: string;
@@ -16,7 +19,7 @@ export function createPlaceholderScreen(
 ) {
   return function PlaceholderScreen() {
     const insets = useSafeAreaInsets();
-    const scrollBottomPadding = 104 + insets.bottom;
+    const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
     return (
       <View className="flex-1 bg-[#f8fbfb]">

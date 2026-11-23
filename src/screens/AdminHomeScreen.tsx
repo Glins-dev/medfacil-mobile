@@ -16,6 +16,7 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import {
   AppScreenHeader,
   Button,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   MainCard,
   Modal,
   QuickAccessCard,
@@ -125,7 +126,7 @@ export function AdminHomeScreen({ navigation }: Props) {
   const [notice, setNotice] = useState("");
 
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
     if (!isRefresh) {

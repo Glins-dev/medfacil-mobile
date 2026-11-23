@@ -2,6 +2,11 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+export const FLOATING_TAB_BAR_HEIGHT = 72;
+export const FLOATING_TAB_BAR_MARGIN_BOTTOM = 16;
+export const FLOATING_TAB_BAR_SCROLL_OFFSET =
+  FLOATING_TAB_BAR_HEIGHT + FLOATING_TAB_BAR_MARGIN_BOTTOM + 24;
+
 const styles = StyleSheet.create({
   outerContainer: {
     position: "absolute",
@@ -14,8 +19,8 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    height: 64,
+    marginBottom: FLOATING_TAB_BAR_MARGIN_BOTTOM,
+    height: FLOATING_TAB_BAR_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -23,7 +28,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#eef2f4",
-    padding: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     shadowColor: "#004959",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -36,31 +42,36 @@ const styles = StyleSheet.create({
     minWidth: 0,
     height: "100%",
     minHeight: 48,
-    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 18,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-  },
-  tabItemFocused: {
-    backgroundColor: "#e2f3f1",
-  },
-  tabItemIdle: {
-    backgroundColor: "transparent",
   },
   tabItemPressed: {
     opacity: 0.8,
   },
+  tabPill: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    minWidth: 64,
+    maxWidth: "100%",
+    gap: 4,
+  },
+  tabPillFocused: {
+    backgroundColor: "#e2f3f1",
+  },
+  tabPillIdle: {
+    backgroundColor: "transparent",
+  },
   iconBox: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
   },
   tabLabel: {
-    marginTop: 3,
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 14,
     textAlign: "center",
     includeFontPadding: false,
@@ -126,29 +137,36 @@ export function FloatingTabBar({
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
               style={({ pressed }) => [
                 styles.tabItem,
-                isFocused ? styles.tabItemFocused : styles.tabItemIdle,
                 pressed ? styles.tabItemPressed : undefined,
               ]}
             >
-              <View style={styles.iconBox}>
-                {options.tabBarIcon
-                  ? options.tabBarIcon({
-                      focused: isFocused,
-                      color: tintColor,
-                      size: 28,
-                    })
-                  : null}
-              </View>
-              <Text
-                numberOfLines={1}
-                maxFontSizeMultiplier={1.2}
+              <View
                 style={[
-                  styles.tabLabel,
-                  isFocused ? styles.tabLabelFocused : styles.tabLabelIdle,
+                  styles.tabPill,
+                  isFocused ? styles.tabPillFocused : styles.tabPillIdle,
                 ]}
               >
-                {label}
-              </Text>
+                <View style={styles.iconBox}>
+                  {options.tabBarIcon
+                    ? options.tabBarIcon({
+                        focused: isFocused,
+                        color: tintColor,
+                        size: 22,
+                      })
+                    : null}
+                </View>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  maxFontSizeMultiplier={1.2}
+                  style={[
+                    styles.tabLabel,
+                    isFocused ? styles.tabLabelFocused : styles.tabLabelIdle,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </View>
             </Pressable>
           );
         })}

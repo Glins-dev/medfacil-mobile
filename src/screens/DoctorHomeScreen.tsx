@@ -14,6 +14,7 @@ import {
   AppScreenHeader,
   Button,
   DateBadge,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
   SendPrescriptionModal,
 } from "@/components";
 import { StethoscopeIcon } from "@/navigation/icons";
@@ -195,7 +196,7 @@ export function DoctorHomeScreen(_props: Props) {
   const [sentNotice, setSentNotice] = useState("");
 
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const todayKey = getClinicDateKey(new Date().toISOString());

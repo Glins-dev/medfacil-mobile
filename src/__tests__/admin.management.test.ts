@@ -23,6 +23,7 @@ import {
   filterCompatibleDoctorsForHospital,
   hasDuplicateScheduleSlot,
   isDoctorCompatibleWithHospital,
+  resolveDoctorLinkedHospitals,
 } from "@/utils/adminRules";
 import { getUpcomingDates } from "@/utils/date";
 
@@ -222,5 +223,82 @@ describe("useAdminStore cascata e duplicidade", () => {
     expect(updated.scheduleSlots).toHaveLength(0);
 
     store.resetLocalAdminData();
+  });
+});
+
+describe("resolveDoctorLinkedHospitals", () => {
+  const doctors: AdminDoctor[] = [
+    {
+      id: "doc-10",
+      name: "Dr. Lucas Almeida",
+      email: "lucas@medfacil.com",
+      crm: "98765/PE",
+      specialtyIds: ["spec-cardio"],
+      specialtyNames: ["Cardiologia"],
+      source: "api",
+    },
+    {
+      id: "doc-20",
+      name: "Dra. Sofia Lima",
+      email: "sofia@medfacil.com",
+      crm: "44556/PE",
+      specialtyIds: ["spec-dermato"],
+      specialtyNames: ["Dermatologia"],
+      source: "api",
+    },
+  ];
+
+  const hospitals: Hospital[] = [
+    {
+      id: "hosp-a",
+      name: "Hospital Central",
+      address: "Av. Conde da Boa Vista, 500",
+      specialtyIds: ["spec-cardio", "spec-dermato"],
+      doctorIds: ["doc-10"],
+    },
+    {
+      id: "hosp-b",
+      name: "Hospital Sul",
+      address: "Av. Conselheiro Aguiar, 900",
+      specialtyIds: ["spec-dermato"],
+      doctorIds: ["doc-20"],
+    },
+  ];
+
+  it("identifica hospitais vinculados pelo id, CRM ou e-mail do medico autenticado", () => {
+    const byId = resolveDoctorLinkedHospitals(
+      { id: "doc-10", email: "outro@medfacil.com", crm: null },
+      doctors,
+      hospitals
+    );
+    expect(byId.linkedHospitals.map((h) => h.id)).toEqual(["hosp-a"]);
+    expect(byId.doctorSpecialtyIds).toEqual(["spec-cardio"]);
+
+    const byCrm = resolveDoctorLinkedHospitals(
+      { id: "session-xyz", email: null, crm: " 98765/pe " },
+      doctors,
+      hospitals
+    );
+    expect(byCrm.linkedHospitals.map((h) => h.id)).toEqual(["hosp-a"]);
+
+    const byEmail = resolveDoctorLinkedHospitals(
+      { id: "session-xyz", email: "SOFIA@medfacil.com", crm: null },
+      doctors,
+      hospitals
+    );
+    expect(byEmail.linkedHospitals.map((h) => h.id)).toEqual(["hosp-b"]);
+    expect(byEmail.doctorSpecialtyIds).toEqual(["spec-dermato"]);
+  });
+
+  it("retorna vazio quando usuario nao possui hospitais vinculados ou esta ausente", () => {
+    const none = resolveDoctorLinkedHospitals(
+      { id: "doc-99", email: "novo@medfacil.com", crm: "00000/PE" },
+      doctors,
+      hospitals
+    );
+    expect(none.linkedHospitals).toHaveLength(0);
+
+    const anonymous = resolveDoctorLinkedHospitals(null, doctors, hospitals);
+    expect(anonymous.linkedHospitals).toHaveLength(0);
   });
 });

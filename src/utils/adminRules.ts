@@ -83,3 +83,62 @@ export function hasDuplicateScheduleSlot(
       slot.time === candidate.time
   );
 }
+
+export interface DoctorIdentity {
+  id: string;
+  email?: string | null;
+  crm?: string | null;
+}
+
+// Identifica hospitais e especialidades associados ao medico autenticado por id, CRM ou e-mail.
+export function resolveDoctorLinkedHospitals(
+  user: DoctorIdentity | null | undefined,
+  doctors: AdminDoctor[],
+  hospitals: Hospital[]
+): {
+  matchedDoctorIds: string[];
+  doctorSpecialtyIds: string[];
+  linkedHospitals: Hospital[];
+} {
+  if (!user) {
+    return {
+      matchedDoctorIds: [],
+      doctorSpecialtyIds: [],
+      linkedHospitals: [],
+    };
+  }
+
+  const normalizedCrm = user.crm?.trim().toUpperCase() || null;
+  const normalizedEmail = user.email?.trim().toLowerCase() || null;
+
+  const matchedDoctors = doctors.filter((doctor) => {
+    if (doctor.id === user.id) return true;
+    if (normalizedCrm && doctor.crm.trim().toUpperCase() === normalizedCrm) {
+      return true;
+    }
+    if (
+      normalizedEmail &&
+      doctor.email?.trim().toLowerCase() === normalizedEmail
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  const matchedIdSet = new Set<string>([
+    user.id,
+    ...matchedDoctors.map((doc) => doc.id),
+  ]);
+  const doctorSpecialtyIds = [
+    ...new Set(matchedDoctors.flatMap((doc) => doc.specialtyIds)),
+  ];
+  const linkedHospitals = hospitals.filter((hospital) =>
+    hospital.doctorIds.some((id) => matchedIdSet.has(id))
+  );
+
+  return {
+    matchedDoctorIds: [...matchedIdSet],
+    doctorSpecialtyIds,
+    linkedHospitals,
+  };
+}

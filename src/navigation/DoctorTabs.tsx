@@ -2,8 +2,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { FloatingTabBar } from "@/components/ui";
 import { DoctorHomeScreen } from "@/screens/DoctorHomeScreen";
+import { DoctorHospitalsScreen } from "@/screens/DoctorHospitalsScreen";
 import { createPlaceholderScreen } from "@/screens/PlaceholderScreen";
-import { CalendarIcon, HomeIcon } from "./icons";
+import { CalendarIcon, HomeIcon, HospitalIcon } from "./icons";
 import type { DoctorTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<DoctorTabParamList>();
@@ -27,6 +28,17 @@ export function DoctorTabs() {
           tabBarAccessibilityLabel: "Início do médico",
           tabBarIcon: ({ color, size }) => (
             <HomeIcon color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="DoctorHospitals"
+        component={DoctorHospitalsScreen}
+        options={{
+          title: "Hospitais",
+          tabBarAccessibilityLabel: "Hospitais vinculados",
+          tabBarIcon: ({ color, size }) => (
+            <HospitalIcon color={color} size={size} />
           ),
         }}
       />

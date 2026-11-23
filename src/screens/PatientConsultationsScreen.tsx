@@ -14,7 +14,12 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Button, DateBadge, PatientScreenHeader } from "@/components";
+import {
+  Button,
+  DateBadge,
+  FLOATING_TAB_BAR_SCROLL_OFFSET,
+  PatientScreenHeader,
+} from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import type {
   PatientStackParamList,
@@ -231,7 +236,7 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<ConsultationFilter>("ALL");
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
-  const scrollBottomPadding = 104 + insets.bottom;
+  const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
   const nowIso = new Date().toISOString();
 
