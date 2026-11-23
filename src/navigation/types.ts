@@ -38,7 +38,7 @@ export type PatientStackParamList = {
 export type DoctorTabParamList = {
   DoctorHome: undefined;
   DoctorHospitals: undefined;
-  DoctorAgenda: undefined;
+  DoctorSchedule: undefined;
 };
 
 export type AdminTabParamList = {
