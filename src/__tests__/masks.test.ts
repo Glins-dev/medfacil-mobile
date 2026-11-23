@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isValidBirthDate,
   isValidCrm,
+  maskCpf,
   maskCrm,
   maskDate,
   maskPhone,
@@ -47,5 +48,11 @@ describe("maskDate e isValidBirthDate", () => {
     expect(isValidBirthDate("31/04/1995")).toBe(false);
     expect(isValidBirthDate("01/01/1899")).toBe(false);
     expect(isValidBirthDate("01/01/2099")).toBe(false);
+  });
+});
+
+describe("maskCpf via masks barrel", () => {
+  it("formata CPF com pontos e traco", () => {
+    expect(maskCpf("12345678901")).toBe("123.456.789-01");
   });
 });

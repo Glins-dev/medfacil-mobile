@@ -1,56 +1,82 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  StatusBar,
+  StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
   Button,
   DateBadge,
+  FeatureCard,
   MainCard,
   Modal,
   NoticeCard,
-  QuickAccessCard,
+  PatientScreenHeader,
 } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
-import type { PatientTabParamList } from "@/navigation/types";
-import { authService } from "@/services/auth.service";
-import { useNextAppointment } from "@/stores/appointment.store";
+import { HomeIcon } from "@/navigation/icons";
+import type {
+  PatientStackParamList,
+  PatientTabParamList,
+} from "@/navigation/types";
+import {
+  getEffectiveAppointmentStatus,
+  useAppointmentStore,
+  useNextAppointment,
+} from "@/stores/appointment.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { describeDate, formatTime, getClinicDateKey } from "@/utils/date";
 import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
-type Props = BottomTabScreenProps<PatientTabParamList, "PatientHome">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<PatientTabParamList, "PatientHome">,
+  NativeStackScreenProps<PatientStackParamList>
+>;
 
-// Tela inicial do paciente fiel ao design: hero de agendamento, proxima consulta e acesso rapido.
+const ICON_CONSULTAS =
+  require("../../assets/icons/icone-consultas.png") as ImageSourcePropType;
+const ICON_MINHAS_RECEITAS =
+  require("../../assets/icons/icone-minhas-receitas.png") as ImageSourcePropType;
+
+const styles = StyleSheet.create({
+  nextCardShadow: {
+    shadowColor: "#0e706f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+});
+
+// Tela inicial do paciente alinhada ao layout oficial com hero, proxima consulta e funcoes.
 export function PatientHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const { appointment, status, reload } = useNextAppointment();
+  const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [refreshing, setRefreshing] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const androidTopFallback =
-    Platform.OS === "android" && insets.top === 0
-      ? (StatusBar.currentHeight ?? 0)
-      : 0;
+  const scrollBottomPadding = 104 + insets.bottom;
 
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
   const appointmentDateInfo = appointment
     ? describeDate(getClinicDateKey(appointment.dateTime))
     : null;
+  const effectiveNextStatus = appointment
+    ? getEffectiveAppointmentStatus(appointment, attendanceById[appointment.id])
+    : null;
+  const nextStatusSuffix =
+    effectiveNextStatus === "CONFIRMADO" ? " · Presença confirmada" : "";
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -61,31 +87,18 @@ export function PatientHomeScreen({ navigation }: Props) {
     }
   };
 
-  const handleLogout = async () => {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await authService.logout();
-    } catch {
-      // Logout local ocorre independentemente da resposta do servidor.
-    } finally {
-      logout();
-      setLoggingOut(false);
-    }
-  };
-
   return (
-    <SafeAreaView
-      edges={["top"]}
-      style={{
-        flex: 1,
-        backgroundColor: "#ffffff",
-        paddingTop: androidTopFallback,
-      }}
-      className="flex-1 bg-white"
-    >
+    <View className="flex-1 bg-[#f8fbfb]">
+      <PatientScreenHeader
+        title={`Olá${firstName ? `, ${firstName}` : ""}`}
+        subtitle="O que você precisa hoje?"
+        icon={<HomeIcon color="#0e706f" size={28} />}
+      />
+
       <ScrollView
-        contentContainerClassName="gap-6 px-5 pb-8 pt-3"
+        className="flex-1"
+        contentContainerClassName="gap-6 px-5 pt-6"
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -97,42 +110,6 @@ export function PatientHomeScreen({ navigation }: Props) {
           />
         }
       >
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold tracking-tight text-brand-dark">
-            Med<Text className="font-semibold italic text-brand">fácil</Text>
-          </Text>
-
-          <Pressable
-            onPress={() => {
-              void handleLogout();
-            }}
-            disabled={loggingOut}
-            accessibilityRole="button"
-            accessibilityLabel="Sair da conta"
-            accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-
-            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-line bg-white px-4 active:opacity-70"
-
-            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
-
-          >
-            <Text className="text-sm font-semibold text-brand">
-              {loggingOut ? "Saindo..." : "Sair"}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View>
-          <Text
-            accessibilityRole="header"
-            className="text-3xl font-bold text-ink"
-          >
-            Olá{firstName ? `, ${firstName}` : ""}
-          </Text>
-          <Text className="mt-1 text-base text-muted">
-            O que você precisa hoje?
-          </Text>
-        </View>
 
         <MainCard
           title="Agendar consulta"
@@ -144,7 +121,9 @@ export function PatientHomeScreen({ navigation }: Props) {
         />
 
         <View className="gap-3">
-          <Text className="text-xl font-bold text-ink">Próxima consulta</Text>
+          <Text className="text-xl font-bold text-[#1f2937]">
+            Próxima consulta
+          </Text>
 
           {status === "loading" ? (
             <View className="min-h-[104px] items-center justify-center gap-2 rounded-2xl border border-line bg-white p-6">
@@ -171,18 +150,40 @@ export function PatientHomeScreen({ navigation }: Props) {
           ) : null}
 
           {status === "ready" && appointment && appointmentDateInfo ? (
-            <NoticeCard
-              leading={
-                <DateBadge
-                  day={appointmentDateInfo.day}
-                  month={appointmentDateInfo.month}
-                />
+            <Pressable
+              onPress={() =>
+                navigation.navigate("PatientAppointmentDetails", {
+                  appointmentId: appointment.id,
+                })
               }
-              title={appointment.specialty ?? "Consulta"}
-              subtitle={appointment.doctorName}
-              detail={`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}`}
-              onPress={() => navigation.navigate("PatientConsultations")}
-            />
+              accessibilityRole="button"
+              accessibilityLabel={`Ver detalhes da consulta de ${appointment.specialty ?? "Consulta"} com ${appointment.doctorName}`}
+              style={styles.nextCardShadow}
+              className="min-h-[88px] w-full flex-row items-center gap-4 rounded-2xl bg-[#dbf0ef] p-4 active:opacity-85"
+            >
+              <DateBadge
+                day={appointmentDateInfo.day}
+                month={appointmentDateInfo.month}
+              />
+
+              <View className="min-w-0 flex-1 gap-0.5">
+                <Text
+                  numberOfLines={1}
+                  className="text-lg font-bold text-slate-900"
+                >
+                  {appointment.specialty ?? "Consulta"}
+                </Text>
+                <Text numberOfLines={1} className="text-sm text-slate-600">
+                  {appointment.doctorName}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="mt-1 text-sm font-semibold text-[#0e706f]"
+                >
+                  {`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}${nextStatusSuffix}`}
+                </Text>
+              </View>
+            </Pressable>
           ) : null}
 
           {status === "ready" && !appointment ? (
@@ -196,20 +197,28 @@ export function PatientHomeScreen({ navigation }: Props) {
         </View>
 
         <View className="gap-3">
-          <Text className="text-xl font-bold text-ink">Acesso rápido</Text>
+          <Text className="text-xl font-bold text-[#1f2937]">
+            Todas as funções
+          </Text>
 
-          <View className="flex-row gap-3">
-            <QuickAccessCard
-              className="flex-1"
-              variant="cream"
-              label="Minhas receitas"
-              imageSource={MEDICAL_IMAGES.prescription}
-              onPress={() => setComingSoonTitle("Minhas receitas")}
+          <View className="gap-3.5">
+            <FeatureCard
+              title="Consultas"
+              description="Veja seus horários e acompanhe os atendimentos."
+              imageSource={ICON_CONSULTAS}
+              onPress={() => navigation.navigate("PatientConsultations")}
             />
-            <QuickAccessCard
-              className="flex-1"
-              variant="cream"
-              label="Minha saúde"
+
+            <FeatureCard
+              title="Minhas receitas"
+              description="Consulte prescrições e orientações médicas."
+              imageSource={ICON_MINHAS_RECEITAS}
+              onPress={() => navigation.navigate("PatientPrescriptions")}
+            />
+
+            <FeatureCard
+              title="Minha saúde"
+              description="Acompanhe informações importantes sobre sua saúde."
               imageSource={MEDICAL_IMAGES.heart}
               onPress={() => setComingSoonTitle("Minha saúde")}
             />
@@ -234,6 +243,6 @@ export function PatientHomeScreen({ navigation }: Props) {
           />
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

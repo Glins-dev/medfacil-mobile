@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CLINIC_TZ,
+  calculateAge,
   describeDate,
   describeDayHeading,
   formatLongDate,
@@ -72,5 +73,23 @@ describe("date utils no fuso America/Recife", () => {
     expect(isValidDate("10/10/1990")).toBe(true);
     expect(isValidDate("30/02/1990")).toBe(false);
     expect(isValidDate("10/10/2099")).toBe(false);
+  });
+
+  it("calcula idade no fuso America/Recife com fallback seguro", () => {
+    const birthdayNoonRecife = new Date("2026-10-10T15:00:00.000Z");
+    expect(calculateAge("10/10/2000", birthdayNoonRecife)).toBe(26);
+    expect(calculateAge("11/10/2000", birthdayNoonRecife)).toBe(25);
+    expect(calculateAge("2000-10-10", birthdayNoonRecife)).toBe(26);
+    expect(
+      calculateAge("2000-10-10T00:00:00.000Z", birthdayNoonRecife)
+    ).toBe(26);
+
+    const lateNightRecife = new Date("2026-10-10T01:30:00.000Z");
+    expect(calculateAge("10/10/2000", lateNightRecife)).toBe(25);
+
+    expect(calculateAge(null, birthdayNoonRecife)).toBeNull();
+    expect(calculateAge("", birthdayNoonRecife)).toBeNull();
+    expect(calculateAge("31/02/2000", birthdayNoonRecife)).toBeNull();
+    expect(calculateAge("01/01/2099", birthdayNoonRecife)).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { AdminTabs } from "./AdminTabs";
 import { AuthStack } from "./AuthStack";
 import { DoctorTabs } from "./DoctorTabs";
-import { PatientTabs } from "./PatientTabs";
+import { PatientStack } from "./PatientStack";
 import { useAuthStore } from "@/stores/auth.store";
 
 // Navegacao condicional: aguarda hidratacao do SecureStore e decide entre Auth ou abas do perfil.
@@ -24,7 +24,7 @@ export function RootNavigator() {
 
   switch (role) {
     case "PACIENTE":
-      return <PatientTabs />;
+      return <PatientStack />;
     case "MEDICO":
       return <DoctorTabs />;
     case "ADMIN":

@@ -10,7 +10,7 @@ export interface DateBadgeProps {
 export function DateBadge({ day, month, className = "" }: DateBadgeProps) {
   return (
     <View
-      className={`h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-accent ${className}`}
+      className={`h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#F7C343] ${className}`}
     >
       <Text className="text-2xl font-bold leading-none text-brand-dark">
         {day}
