@@ -1,11 +1,13 @@
 import { api } from "@/services/api";
 import { useAdminStore } from "@/stores/admin.store";
+import { formatTime, getClinicDateKey } from "@/utils/date";
+import {
+  normalizeSpecialty,
+  type RawSpecialtyRecord,
+  type SpecialtyCatalogItem,
+} from "@/utils/specialties";
 
-export interface Specialty {
-  id: string;
-  name: string;
-  description: string | null;
-}
+export type Specialty = SpecialtyCatalogItem;
 
 export interface Doctor {
   id: string;
@@ -23,23 +25,18 @@ export interface DoctorWithAvailability extends Doctor {
   totalSlots: number;
 }
 
-interface RawSpecialty {
-  id: string;
-  nome: string;
-  descricao: string | null;
-}
-
 export const catalogService = {
   listSpecialties: async (): Promise<Specialty[]> => {
-    const { data } = await api.get<{ specialties: RawSpecialty[] }>(
+    const { data } = await api.get<{ specialties: RawSpecialtyRecord[] }>(
       "/catalog/specialties"
     );
 
-    return data.specialties.map((s) => ({
-      id: s.id,
-      name: s.nome,
-      description: s.descricao,
-    }));
+    const normalized = data.specialties
+      .map(normalizeSpecialty)
+      .filter((item): item is Specialty => item !== null);
+
+    useAdminStore.getState().syncSpecialties(normalized);
+    return normalized;
   },
 
   listDoctors: async (specialtyId: string): Promise<Doctor[]> => {
@@ -98,15 +95,30 @@ export const catalogService = {
         .map((item) => item.time)
     );
 
+    const bookedLocalTimes = new Set(
+      adminState.localAppointments
+        .filter(
+          (item) =>
+            item.doctorId === doctorId &&
+            item.status !== "CANCELADO" &&
+            getClinicDateKey(item.dateTime) === date
+        )
+        .map((item) => formatTime(item.dateTime))
+    );
+
     const addedTimes = adminState.scheduleSlots
       .filter((item) => item.doctorId === doctorId && item.date === date)
       .map((item) => item.time);
 
     const merged = new Set<string>(
-      remoteSlots.filter((slot) => !removedTimes.has(slot))
+      remoteSlots.filter(
+        (slot) => !removedTimes.has(slot) && !bookedLocalTimes.has(slot)
+      )
     );
     for (const added of addedTimes) {
-      merged.add(added);
+      if (!bookedLocalTimes.has(added)) {
+        merged.add(added);
+      }
     }
 
     return [...merged].sort((a, b) => a.localeCompare(b));

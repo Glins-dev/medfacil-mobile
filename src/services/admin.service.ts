@@ -1,16 +1,22 @@
 import { api } from "@/services/api";
 import { useAdminStore } from "@/stores/admin.store";
-import type { AdminDoctor, Hospital, ScheduleSlot } from "@/types/admin";
+import type {
+  AdminDoctor,
+  AdminSpecialtyItem,
+  Hospital,
+  ScheduleSlot,
+} from "@/types/admin";
 import {
   hasDuplicateScheduleSlot,
   isDoctorCompatibleWithHospital,
 } from "@/utils/adminRules";
+import {
+  normalizeSpecialty,
+  sanitizeHospitalSpecialtyIds,
+  type RawSpecialtyRecord,
+} from "@/utils/specialties";
 
-export interface AdminSpecialty {
-  id: string;
-  name: string;
-  description: string | null;
-}
+export type AdminSpecialty = AdminSpecialtyItem;
 
 export interface CreatedDoctor {
   id: string;
@@ -59,22 +65,37 @@ function generateId(prefix: string): string {
 }
 
 export const adminService = {
-  // Todas as especialidades (inclusive as sem medico), para formularios administrativos.
+  // Todas as especialidades (inclusive as sem medico), normalizadas e sincronizadas na store.
   listSpecialties: async (): Promise<AdminSpecialty[]> => {
-    const { data } = await api.get<{ specialties: AdminSpecialty[] }>(
+    const { data } = await api.get<{ specialties: RawSpecialtyRecord[] }>(
       "/admin/specialties"
     );
-    return data.specialties;
+
+    const normalized = data.specialties
+      .map(normalizeSpecialty)
+      .filter((item): item is AdminSpecialty => item !== null)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+    useAdminStore.getState().syncSpecialties(normalized);
+    return normalized;
   },
 
   createSpecialty: async (
     payload: CreateSpecialtyPayload
   ): Promise<AdminSpecialty> => {
-    const { data } = await api.post<{ specialty: AdminSpecialty }>(
+    const { data } = await api.post<{ specialty: RawSpecialtyRecord }>(
       "/admin/specialties",
       payload
     );
-    return data.specialty;
+
+    const normalized = normalizeSpecialty(data.specialty) ?? {
+      id: String(data.specialty.id ?? data.specialty._id ?? generateId("spec")),
+      name: payload.name.trim(),
+      description: payload.description?.trim() || null,
+    };
+
+    useAdminStore.getState().upsertSpecialty(normalized);
+    return normalized;
   },
 
   createDoctor: async (
@@ -157,14 +178,31 @@ export const adminService = {
   },
 
   createHospital: async (payload: CreateHospitalPayload): Promise<Hospital> => {
+    const store = useAdminStore.getState();
+    const cleanedIds = sanitizeHospitalSpecialtyIds(
+      payload.specialtyIds,
+      store.specialties
+    );
+
+    const specialtyNamesById: Record<string, string> = {};
+    for (const id of cleanedIds) {
+      const match = store.specialties.find(
+        (spec) => spec.id.toLowerCase() === id.toLowerCase()
+      );
+      if (match) {
+        specialtyNamesById[id] = match.name;
+      }
+    }
+
     const hospital: Hospital = {
       id: generateId("hosp"),
       name: payload.name.trim(),
       address: payload.address.trim(),
-      specialtyIds: [...new Set(payload.specialtyIds)],
+      specialtyIds: cleanedIds,
+      specialtyNamesById,
       doctorIds: [],
     };
-    useAdminStore.getState().addHospital(hospital);
+    store.addHospital(hospital);
     return hospital;
   },
 

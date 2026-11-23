@@ -368,8 +368,11 @@ export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
           <InfoRowCard
             icon={<MapPinDetailIcon />}
             label="Local"
-            value={CLINIC_INFO.unitLabel}
-            hint={`${CLINIC_INFO.name} · ${CLINIC_INFO.address}`}
+            value={appointment.hospitalName ?? CLINIC_INFO.unitLabel}
+            hint={
+              appointment.hospitalAddress ??
+              `${CLINIC_INFO.name} · ${CLINIC_INFO.address}`
+            }
           />
         </View>
 

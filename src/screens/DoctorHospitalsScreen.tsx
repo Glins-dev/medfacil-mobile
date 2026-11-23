@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
 import {
@@ -19,6 +20,7 @@ import { catalogService, type Specialty } from "@/services/catalog.service";
 import { useAdminStore } from "@/stores/admin.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { resolveDoctorLinkedHospitals } from "@/utils/adminRules";
+import { resolveHospitalSpecialties } from "@/utils/specialties";
 
 type Props = BottomTabScreenProps<DoctorTabParamList, "DoctorHospitals">;
 
@@ -32,13 +34,14 @@ const styles = StyleSheet.create({
   },
 });
 
-// Tela de hospitais vinculados ao medico autenticado com especialidades destacadas.
+// Tela de hospitais vinculados ao medico autenticado com especialidades resolvidas e destacadas.
 export function DoctorHospitalsScreen(_props: Props) {
   const user = useAuthStore((s) => s.user);
   const doctors = useAdminStore((s) => s.doctors);
   const hospitals = useAdminStore((s) => s.hospitals);
+  const storedSpecialties = useAdminStore((s) => s.specialties);
 
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [catalogSpecialties, setCatalogSpecialties] = useState<Specialty[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const insets = useSafeAreaInsets();
@@ -47,15 +50,17 @@ export function DoctorHospitalsScreen(_props: Props) {
   const loadSpecialties = useCallback(async () => {
     try {
       const list = await catalogService.listSpecialties();
-      setSpecialties(list);
+      setCatalogSpecialties(list);
     } catch {
-      // Caso a consulta falhe, utiliza os ids/nomes ja disponiveis na store local.
+      // Preserva as especialidades ja sincronizadas na store caso a chamada falhe.
     }
   }, []);
 
-  useEffect(() => {
-    void loadSpecialties();
-  }, [loadSpecialties]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadSpecialties();
+    }, [loadSpecialties])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -71,26 +76,21 @@ export function DoctorHospitalsScreen(_props: Props) {
     [user, doctors, hospitals]
   );
 
-  const doctorSpecialtySet = useMemo(
-    () => new Set(doctorSpecialtyIds),
+  const doctorSpecialtyIdSet = useMemo(
+    () => new Set(doctorSpecialtyIds.map((id) => id.trim().toLowerCase())),
     [doctorSpecialtyIds]
   );
 
-  const specialtyNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const item of specialties) {
-      map.set(item.id, item.name);
-    }
-    for (const doc of doctors) {
-      doc.specialtyIds.forEach((id, idx) => {
-        const name = doc.specialtyNames[idx];
-        if (name && !map.has(id)) {
-          map.set(id, name);
-        }
-      });
-    }
-    return map;
-  }, [doctors, specialties]);
+  const combinedSpecialties = useMemo(() => {
+    const doctorPairs = doctors.flatMap((doc) =>
+      doc.specialtyIds.map((id, idx) => ({
+        id,
+        name: doc.specialtyNames[idx] ?? "",
+        description: null,
+      }))
+    );
+    return [...storedSpecialties, ...catalogSpecialties, ...doctorPairs];
+  }, [catalogSpecialties, doctors, storedSpecialties]);
 
   const summaryCountText =
     linkedHospitals.length === 0
@@ -159,62 +159,77 @@ export function DoctorHospitalsScreen(_props: Props) {
           </View>
         ) : (
           <View className="gap-4">
-            {linkedHospitals.map((hospital) => (
-              <View
-                key={hospital.id}
-                style={styles.cardShadow}
-                className="gap-3.5 rounded-2xl border border-[#e6ecee] bg-white p-4"
-              >
-                <View className="flex-row items-center gap-3.5">
-                  <View className="h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#dff4f2]">
-                    <HospitalIcon color="#0e706f" size={24} />
+            {linkedHospitals.map((hospital) => {
+              const resolvedSpecialties = resolveHospitalSpecialties(
+                hospital.specialtyIds,
+                combinedSpecialties,
+                hospital.specialtyNamesById
+              );
+
+              return (
+                <View
+                  key={hospital.id}
+                  style={styles.cardShadow}
+                  className="gap-3.5 rounded-2xl border border-[#e6ecee] bg-white p-4"
+                >
+                  <View className="flex-row items-center gap-3.5">
+                    <View className="h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#dff4f2]">
+                      <HospitalIcon color="#0e706f" size={24} />
+                    </View>
+
+                    <View className="min-w-0 flex-1 gap-1">
+                      <Text className="text-base font-bold text-[#004959]">
+                        {hospital.name}
+                      </Text>
+                      <Text className="text-sm text-[#4b5563]">
+                        {hospital.address}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-base font-bold text-[#004959]">
-                      {hospital.name}
+                  <View className="gap-2 border-t border-[#eef2f4] pt-3">
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                      Especialidades atendidas na unidade
                     </Text>
-                    <Text className="text-sm text-[#4b5563]">
-                      {hospital.address}
-                    </Text>
+
+                    {resolvedSpecialties.length === 0 ? (
+                      <Text className="text-xs text-[#6b7280]">
+                        Nenhuma especialidade informada
+                      </Text>
+                    ) : (
+                      <View className="flex-row flex-wrap gap-2">
+                        {resolvedSpecialties.map((spec) => {
+                          const isDoctorSpecialty = doctorSpecialtyIdSet.has(
+                            spec.id.toLowerCase()
+                          );
+
+                          return (
+                            <View
+                              key={`${hospital.id}-${spec.id}-${spec.name}`}
+                              className={`rounded-full border px-3 py-1 ${
+                                isDoctorSpecialty
+                                  ? "border-[#0e706f] bg-[#dff4f2]"
+                                  : "border-[#e6ecee] bg-[#f6f8f9]"
+                              }`}
+                            >
+                              <Text
+                                className={`text-xs ${
+                                  isDoctorSpecialty
+                                    ? "font-bold text-[#0e706f]"
+                                    : "font-medium text-[#4b5563]"
+                                }`}
+                              >
+                                {spec.name}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
                   </View>
                 </View>
-
-                <View className="gap-2 border-t border-[#eef2f4] pt-3">
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
-                    Especialidades atendidas na unidade
-                  </Text>
-
-                  <View className="flex-row flex-wrap gap-2">
-                    {hospital.specialtyIds.map((specId) => {
-                      const isDoctorSpecialty = doctorSpecialtySet.has(specId);
-                      const label = specialtyNameMap.get(specId) ?? specId;
-
-                      return (
-                        <View
-                          key={`${hospital.id}-${specId}`}
-                          className={`rounded-full border px-3 py-1 ${
-                            isDoctorSpecialty
-                              ? "border-[#0e706f] bg-[#dff4f2]"
-                              : "border-[#e6ecee] bg-[#f6f8f9]"
-                          }`}
-                        >
-                          <Text
-                            className={`text-xs ${
-                              isDoctorSpecialty
-                                ? "font-bold text-[#0e706f]"
-                                : "font-medium text-[#4b5563]"
-                            }`}
-                          >
-                            {label}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>

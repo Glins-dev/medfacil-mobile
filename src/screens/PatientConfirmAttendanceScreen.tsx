@@ -197,7 +197,8 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
             {formatTime(appointment.dateTime)} ({getPeriod(appointment.dateTime)})
           </Text>
           <Text className="text-xs text-muted">
-            {CLINIC_INFO.unitLabel} · {CLINIC_INFO.address}
+            {appointment.hospitalName ?? CLINIC_INFO.unitLabel} ·{" "}
+            {appointment.hospitalAddress ?? CLINIC_INFO.address}
           </Text>
         </View>
 

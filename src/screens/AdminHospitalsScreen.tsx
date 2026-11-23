@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Path } from "react-native-svg";
 
@@ -41,6 +42,7 @@ import {
 import { adminService, type AdminSpecialty } from "@/services/admin.service";
 import { useAdminStore } from "@/stores/admin.store";
 import { filterCompatibleDoctorsForHospital } from "@/utils/adminRules";
+import { resolveHospitalSpecialties } from "@/utils/specialties";
 
 type Props = BottomTabScreenProps<AdminTabParamList, "AdminHospitals">;
 type LoadStatus = "loading" | "ready" | "error";
@@ -100,6 +102,7 @@ function CheckIcon({ color = "#ffffff", size = 14 }: { color?: string; size?: nu
 export function AdminHospitalsScreen({ navigation }: Props) {
   const doctors = useAdminStore((s) => s.doctors);
   const hospitals = useAdminStore((s) => s.hospitals);
+  const storedSpecialties = useAdminStore((s) => s.specialties);
 
   const [specialties, setSpecialties] = useState<AdminSpecialty[]>([]);
   const [specStatus, setSpecStatus] = useState<LoadStatus>("loading");
@@ -134,9 +137,11 @@ export function AdminHospitalsScreen({ navigation }: Props) {
     }
   }, []);
 
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadData(specialties.length > 0);
+    }, [loadData, specialties.length])
+  );
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
@@ -229,13 +234,16 @@ export function AdminHospitalsScreen({ navigation }: Props) {
     return filterCompatibleDoctorsForHospital(doctors, selectedHospital);
   }, [doctors, selectedHospital]);
 
-  const specialtyNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const item of specialties) {
-      map.set(item.id, item.name);
-    }
-    return map;
-  }, [specialties]);
+  const combinedSpecialties = useMemo(() => {
+    const doctorPairs = doctors.flatMap((doc) =>
+      doc.specialtyIds.map((id, idx) => ({
+        id,
+        name: doc.specialtyNames[idx] ?? "",
+        description: null,
+      }))
+    );
+    return [...storedSpecialties, ...specialties, ...doctorPairs];
+  }, [doctors, specialties, storedSpecialties]);
 
   const handleLinkDoctor = async (doctorId: string, doctorName: string) => {
     if (!selectedHospital) return;
@@ -565,13 +573,17 @@ export function AdminHospitalsScreen({ navigation }: Props) {
                         Especialidades do hospital
                       </Text>
                       <View className="flex-row flex-wrap gap-1.5">
-                        {selectedHospital.specialtyIds.map((specId) => (
+                        {resolveHospitalSpecialties(
+                          selectedHospital.specialtyIds,
+                          combinedSpecialties,
+                          selectedHospital.specialtyNamesById
+                        ).map((spec) => (
                           <View
-                            key={specId}
+                            key={`${selectedHospital.id}-${spec.id}-${spec.name}`}
                             className="rounded-full bg-[#dbf0ef] px-2.5 py-1"
                           >
                             <Text className="text-xs font-bold text-[#004959]">
-                              {specialtyNameMap.get(specId) ?? specId}
+                              {spec.name}
                             </Text>
                           </View>
                         ))}
@@ -724,13 +736,17 @@ export function AdminHospitalsScreen({ navigation }: Props) {
                       </Text>
 
                       <View className="flex-row flex-wrap gap-1.5">
-                        {hospital.specialtyIds.map((specId) => (
+                        {resolveHospitalSpecialties(
+                          hospital.specialtyIds,
+                          combinedSpecialties,
+                          hospital.specialtyNamesById
+                        ).map((spec) => (
                           <View
-                            key={`${hospital.id}-${specId}`}
+                            key={`${hospital.id}-${spec.id}-${spec.name}`}
                             className="rounded-full bg-[#dbf0ef] px-2.5 py-1"
                           >
                             <Text className="text-xs font-bold text-[#004959]">
-                              {specialtyNameMap.get(specId) ?? specId}
+                              {spec.name}
                             </Text>
                           </View>
                         ))}

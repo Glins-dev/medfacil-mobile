@@ -20,6 +20,8 @@ export interface BookingConfirmedParams {
   doctorName: string;
   doctorCrm?: string;
   dateTime: string;
+  hospitalName?: string | null;
+  hospitalAddress?: string | null;
 }
 
 export type PatientStackParamList = {

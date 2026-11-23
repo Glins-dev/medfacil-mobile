@@ -205,8 +205,12 @@ function ConsultationCard({
           <Text numberOfLines={1} className="text-sm text-muted">
             {item.doctorName}
           </Text>
-          <Text className="text-xs text-muted">
-            {CLINIC_INFO.name} · {CLINIC_INFO.neighborhood}
+          <Text numberOfLines={1} className="text-xs text-muted">
+            {item.hospitalName
+              ? item.hospitalAddress
+                ? `${item.hospitalName} · ${item.hospitalAddress}`
+                : item.hospitalName
+              : `${CLINIC_INFO.name} · ${CLINIC_INFO.neighborhood}`}
           </Text>
           <Text className="mt-1 text-xs font-medium text-muted">
             {formatWeekdayLong(item.dateTime)}

@@ -181,7 +181,9 @@ export function PatientHomeScreen({ navigation }: Props) {
                   numberOfLines={1}
                   className="mt-1 text-sm font-semibold text-[#0e706f]"
                 >
-                  {`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}${nextStatusSuffix}`}
+                  {`${formatTime(appointment.dateTime)} · ${
+                    appointment.hospitalName ?? CLINIC_INFO.unitLabel
+                  }${nextStatusSuffix}`}
                 </Text>
               </View>
             </Pressable>

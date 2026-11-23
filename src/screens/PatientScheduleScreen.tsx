@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -9,7 +9,10 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { CompositeScreenProps } from "@react-navigation/native";
+import {
+  useFocusEffect,
+  type CompositeScreenProps,
+} from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
@@ -33,9 +36,9 @@ import type {
   PatientStackParamList,
   PatientTabParamList,
 } from "@/navigation/types";
-import { getApiErrorMessage, getApiErrorStatus } from "@/services/api";
 import {
   appointmentService,
+  classifyBookingError,
   type Appointment,
 } from "@/services/appointment.service";
 import {
@@ -49,6 +52,7 @@ import {
   useAppointments,
   useAppointmentStore,
 } from "@/stores/appointment.store";
+import { useAuthStore } from "@/stores/auth.store";
 import {
   describeDate,
   formatLongDate,
@@ -68,16 +72,57 @@ type LoadStatus = "loading" | "ready" | "error";
 const DAYS_AHEAD = 14;
 const PERIOD_ORDER: DayPeriod[] = ["Manhã", "Tarde", "Noite"];
 
+interface BookingReviewSnapshot {
+  specialtyId: string;
+  specialtyName: string;
+  doctorId: string;
+  doctorName: string;
+  doctorCrm: string;
+  date: string;
+  weekdayLong: string;
+  time: string;
+  period: DayPeriod;
+  hospitalId: string | null;
+  hospitalName: string | null;
+  hospitalAddress: string | null;
+}
+
+interface UseRemoteListOptions {
+  paused?: boolean;
+  preserveOnReload?: boolean;
+  resetKey?: string | null;
+}
+
 // Carrega listas remotas ignorando respostas atrasadas quando a selecao muda.
-function useRemoteList<T>(load: (() => Promise<T[]>) | null, deps: unknown[]) {
+function useRemoteList<T>(
+  load: (() => Promise<T[]>) | null,
+  deps: unknown[],
+  options?: UseRemoteListOptions
+) {
+  const paused = Boolean(options?.paused);
+  const preserveOnReload = Boolean(options?.preserveOnReload);
+  const resetKey = options?.resetKey;
+
   const [items, setItems] = useState<T[]>([]);
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [reloadKey, setReloadKey] = useState(0);
+  const prevResetKeyRef = useRef<string | null | undefined>(resetKey);
 
   useEffect(() => {
-    setItems([]);
+    const resetChanged = prevResetKeyRef.current !== resetKey;
+    prevResetKeyRef.current = resetKey;
+
     if (!load) {
+      setItems([]);
       setStatus("ready");
+      return;
+    }
+
+    if (resetChanged || !preserveOnReload) {
+      setItems([]);
+    }
+
+    if (paused) {
       return;
     }
 
@@ -98,7 +143,7 @@ function useRemoteList<T>(load: (() => Promise<T[]>) | null, deps: unknown[]) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, reloadKey]);
+  }, [...deps, reloadKey, paused]);
 
   return { items, status, reload: () => setReloadKey((key) => key + 1) };
 }
@@ -167,6 +212,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const removedSlots = useAdminStore((s) => s.removedSlots);
   const deletedDoctorIds = useAdminStore((s) => s.deletedDoctorIds);
   const hospitals = useAdminStore((s) => s.hospitals);
+  const authUser = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
 
@@ -175,6 +221,8 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [pickedDoctorId, setPickedDoctorId] = useState<string | null>(null);
+  const [reviewSnapshot, setReviewSnapshot] =
+    useState<BookingReviewSnapshot | null>(null);
 
   const [dateModalOpen, setDateModalOpen] = useState(false);
   const [timeModalOpen, setTimeModalOpen] = useState(false);
@@ -183,6 +231,8 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [conflictRequiresNewSlot, setConflictRequiresNewSlot] = useState(false);
+  const [bookingSucceeded, setBookingSucceeded] = useState(false);
+  const bookingCompletedRef = useRef(false);
 
   const upcomingDateStrings = useMemo(() => getUpcomingDates(DAYS_AHEAD), []);
   const todayDateKey = upcomingDateStrings[0] ?? "";
@@ -203,7 +253,12 @@ export function PatientScheduleScreen({ navigation }: Props) {
       scheduleSlots,
       removedSlots,
       deletedDoctorIds,
-    ]
+    ],
+    {
+      paused: step === 3 || submitting || bookingSucceeded,
+      preserveOnReload: true,
+      resetKey: specialtyId,
+    }
   );
 
   const selectedSpecialty =
@@ -235,21 +290,59 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const selectedDateEntry =
     aggregatedDates.find((item) => item.date === date) ?? null;
 
-  // Garante que a data e o horario continuem validos caso a disponibilidade seja recarregada.
+  // Garante que a data e o horario continuem validos caso a disponibilidade seja recarregada na etapa 2.
   useEffect(() => {
+    if (
+      step !== 2 ||
+      doctors.status !== "ready" ||
+      submitting ||
+      bookingSucceeded ||
+      bookingCompletedRef.current
+    ) {
+      return;
+    }
     if (date && !aggregatedDates.some((item) => item.date === date)) {
       setDate(null);
       setTime(null);
       setPickedDoctorId(null);
     }
-  }, [aggregatedDates, date]);
+  }, [
+    aggregatedDates,
+    bookingSucceeded,
+    date,
+    doctors.status,
+    step,
+    submitting,
+  ]);
 
   useEffect(() => {
-    if (date && time && selectedDateEntry && !selectedDateEntry.slots.includes(time)) {
+    if (
+      step !== 2 ||
+      doctors.status !== "ready" ||
+      submitting ||
+      bookingSucceeded ||
+      bookingCompletedRef.current
+    ) {
+      return;
+    }
+    if (
+      date &&
+      time &&
+      selectedDateEntry &&
+      !selectedDateEntry.slots.includes(time)
+    ) {
       setTime(null);
       setPickedDoctorId(null);
     }
-  }, [date, selectedDateEntry, time]);
+  }, [
+    bookingSucceeded,
+    date,
+    doctors.status,
+    selectedDateEntry,
+    step,
+    submitting,
+    time,
+  ]);
 
   // Agrupa horarios "HH:mm" da data escolhida por periodo no fuso America/Recife.
   const groupedSlots = useMemo(() => {
@@ -344,10 +437,34 @@ export function PatientScheduleScreen({ navigation }: Props) {
     [todayDateKey, tomorrowDateKey]
   );
 
+  const handleResetFlow = useCallback(() => {
+    setSpecialtyId(null);
+    setDate(null);
+    setTime(null);
+    setPickedDoctorId(null);
+    setReviewSnapshot(null);
+    setSubmitError("");
+    setConflictRequiresNewSlot(false);
+    setBookingSucceeded(false);
+    setStep(1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (bookingCompletedRef.current) {
+        bookingCompletedRef.current = false;
+        handleResetFlow();
+      }
+    }, [handleResetFlow])
+  );
+
   const handleBack = () => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
     if (step > 1) {
+      if (step === 3) {
+        setReviewSnapshot(null);
+      }
       setStep((current) => (current - 1) as ScheduleStepNumber);
       return;
     }
@@ -357,21 +474,25 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const handleSelectSpecialty = (specialty: Specialty) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
+    setBookingSucceeded(false);
     if (specialty.id !== specialtyId) {
       setSpecialtyId(specialty.id);
       setDate(null);
       setTime(null);
       setPickedDoctorId(null);
+      setReviewSnapshot(null);
     }
   };
 
   const handleSelectDate = (nextDate: string) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
+    setBookingSucceeded(false);
     if (nextDate !== date) {
       setDate(nextDate);
       setTime(null);
       setPickedDoctorId(null);
+      setReviewSnapshot(null);
     }
     setDateModalOpen(false);
   };
@@ -379,21 +500,93 @@ export function PatientScheduleScreen({ navigation }: Props) {
   const handleSelectTime = (nextTime: string) => {
     setSubmitError("");
     setConflictRequiresNewSlot(false);
+    setBookingSucceeded(false);
     setTime(nextTime);
     setPickedDoctorId(null);
+    setReviewSnapshot(null);
     setTimeModalOpen(false);
   };
 
+  const handleGoToReview = () => {
+    if (
+      !specialtyId ||
+      !selectedSpecialty ||
+      !resolvedDoctor ||
+      !date ||
+      !time
+    ) {
+      return;
+    }
+    setSubmitError("");
+    setConflictRequiresNewSlot(false);
+    setBookingSucceeded(false);
+    setReviewSnapshot({
+      specialtyId,
+      specialtyName: selectedSpecialty.name,
+      doctorId: resolvedDoctor.id,
+      doctorName: resolvedDoctor.name,
+      doctorCrm: resolvedDoctor.crm,
+      date,
+      weekdayLong:
+        selectedDateEntry?.weekdayLong ?? describeDate(date).weekdayLong,
+      time,
+      period: getPeriod(`${date}T${time}:00-03:00`),
+      hospitalId: resolvedHospital?.id ?? null,
+      hospitalName: resolvedHospital?.name ?? null,
+      hospitalAddress: resolvedHospital?.address ?? null,
+    });
+    setStep(3);
+  };
+
+  const handleChooseAnotherSlot = () => {
+    setSubmitError("");
+    setConflictRequiresNewSlot(false);
+    setReviewSnapshot(null);
+    setBookingSucceeded(false);
+    setStep(2);
+    doctors.reload();
+    void reloadAppointments();
+  };
+
+  const selectedPeriod =
+    date && time ? getPeriod(`${date}T${time}:00-03:00`) : null;
+
+  const reviewSpecialtyName =
+    selectedSpecialty?.name ?? reviewSnapshot?.specialtyName ?? "";
+  const reviewDoctorId = resolvedDoctor?.id ?? reviewSnapshot?.doctorId ?? null;
+  const reviewDoctorName =
+    resolvedDoctor?.name ?? reviewSnapshot?.doctorName ?? "";
+  const reviewDoctorCrm =
+    resolvedDoctor?.crm ?? reviewSnapshot?.doctorCrm ?? "";
+  const reviewDate = date ?? reviewSnapshot?.date ?? null;
+  const reviewWeekdayLong =
+    selectedDateEntry?.weekdayLong ??
+    reviewSnapshot?.weekdayLong ??
+    (reviewDate ? describeDate(reviewDate).weekdayLong : "");
+  const reviewTime = time ?? reviewSnapshot?.time ?? null;
+  const reviewPeriod =
+    selectedPeriod ??
+    reviewSnapshot?.period ??
+    (reviewDate && reviewTime
+      ? getPeriod(`${reviewDate}T${reviewTime}:00-03:00`)
+      : "");
+  const reviewHospitalId =
+    resolvedHospital?.id ?? reviewSnapshot?.hospitalId ?? null;
+  const reviewHospitalName =
+    resolvedHospital?.name ?? reviewSnapshot?.hospitalName ?? null;
+  const reviewHospitalAddress =
+    resolvedHospital?.address ?? reviewSnapshot?.hospitalAddress ?? null;
+
   const handleConfirm = async () => {
-    if (!resolvedDoctor || !date || !time || submitting) return;
+    if (!reviewDoctorId || !reviewDate || !reviewTime || submitting) return;
 
     const existingConflict = findPatientAppointmentConflict(
       patientAppointments,
-      date,
-      time
+      reviewDate,
+      reviewTime
     );
     if (existingConflict) {
-      setSubmitError("Você já possui uma consulta neste horário");
+      setSubmitError("Você já possui uma consulta neste horário.");
       setConflictRequiresNewSlot(true);
       return;
     }
@@ -403,10 +596,20 @@ export function PatientScheduleScreen({ navigation }: Props) {
     setConflictRequiresNewSlot(false);
     try {
       const created = await appointmentService.book({
-        doctorId: resolvedDoctor.id,
-        date,
-        time,
+        doctorId: reviewDoctorId,
+        date: reviewDate,
+        time: reviewTime,
+        specialty: reviewSpecialtyName || null,
+        doctorName: reviewDoctorName,
+        doctorCrm: reviewDoctorCrm || null,
+        hospitalId: reviewHospitalId,
+        hospitalName: reviewHospitalName,
+        hospitalAddress: reviewHospitalAddress,
+        patientId: authUser?.id,
+        patientName: authUser?.name,
       });
+      bookingCompletedRef.current = true;
+      setBookingSucceeded(true);
       const store = useAppointmentStore.getState();
       if (store.status === "ready") {
         store.upsert(created);
@@ -415,26 +618,20 @@ export function PatientScheduleScreen({ navigation }: Props) {
       }
       const summary = {
         appointmentId: created.id,
-        specialty: created.specialty ?? selectedSpecialty?.name ?? null,
-        doctorName: created.doctorName,
-        doctorCrm: resolvedDoctor.crm,
+        specialty: created.specialty ?? (reviewSpecialtyName || null),
+        doctorName: created.doctorName || reviewDoctorName,
+        doctorCrm: reviewDoctorCrm || undefined,
         dateTime: created.dateTime,
+        hospitalName: created.hospitalName ?? reviewHospitalName ?? null,
+        hospitalAddress:
+          created.hospitalAddress ?? reviewHospitalAddress ?? null,
       };
-      handleResetFlow();
       navigation.navigate("PatientBookingConfirmed", summary);
     } catch (error) {
-      const status = getApiErrorStatus(error);
-      setSubmitError(
-        getApiErrorMessage(
-          error,
-          "Não foi possível agendar a consulta. Tente novamente."
-        )
-      );
-      if (status === 409) {
-        setTime(null);
-        setPickedDoctorId(null);
-        setConflictRequiresNewSlot(true);
-        doctors.reload();
+      const classified = classifyBookingError(error);
+      setSubmitError(classified.message);
+      setConflictRequiresNewSlot(classified.isConflict);
+      if (classified.isConflict) {
         void reloadAppointments();
       }
     } finally {
@@ -442,20 +639,11 @@ export function PatientScheduleScreen({ navigation }: Props) {
     }
   };
 
-  const handleResetFlow = () => {
-    setSpecialtyId(null);
-    setDate(null);
-    setTime(null);
-    setPickedDoctorId(null);
-    setSubmitError("");
-    setConflictRequiresNewSlot(false);
-    setStep(1);
-  };
-
-  const selectedPeriod =
-    date && time ? getPeriod(`${date}T${time}:00-03:00`) : null;
-
-  const specialtyImage = getSpecialtyImage(selectedSpecialty?.name);
+  const specialtyImage = getSpecialtyImage(
+    step === 3 ? reviewSpecialtyName : selectedSpecialty?.name
+  );
+  const hasBlockingExistingConflict =
+    Boolean(activeSelectionConflict) && !bookingSucceeded;
 
   return (
     <View className="flex-1 bg-white">
@@ -736,8 +924,12 @@ export function PatientScheduleScreen({ navigation }: Props) {
                                   Disponível
                                 </Text>
                               </View>
-                              <Text className="text-xs font-medium text-muted">
-                                {CLINIC_INFO.neighborhood}
+                              <Text
+                                numberOfLines={1}
+                                className="flex-1 text-xs font-medium text-muted"
+                              >
+                                {resolvedHospital?.address ??
+                                  CLINIC_INFO.neighborhood}
                               </Text>
                             </View>
                           </View>
@@ -765,7 +957,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
                     !resolvedDoctor ||
                     Boolean(activeSelectionConflict)
                   }
-                  onPress={() => setStep(3)}
+                  onPress={handleGoToReview}
                 />
               </View>
             </View>
@@ -800,10 +992,10 @@ export function PatientScheduleScreen({ navigation }: Props) {
                 <View className="flex-row items-center justify-between gap-3">
                   <View className="min-w-0 flex-1 items-start gap-1">
                     <Text className="text-2xl font-bold text-ink">
-                      {selectedSpecialty?.name}
+                      {reviewSpecialtyName}
                     </Text>
                     <Text className="text-sm font-medium text-muted">
-                      {resolvedDoctor?.name}
+                      {reviewDoctorName}
                     </Text>
 
                     <View className="mt-3 rounded-full bg-brand-light/20 px-4 py-1.5">
@@ -825,29 +1017,28 @@ export function PatientScheduleScreen({ navigation }: Props) {
                 <DetailRow
                   label="Data"
                   value={
-                    date
-                      ? `${formatLongDate(`${date}T12:00:00.000Z`)} (${selectedDateEntry?.weekdayLong ?? ""
-                      })`
+                    reviewDate
+                      ? `${formatLongDate(`${reviewDate}T12:00:00.000Z`)} (${reviewWeekdayLong})`
                       : ""
                   }
                 />
-                <DetailRow label="Horário" value={time ?? ""} />
+                <DetailRow label="Horário" value={reviewTime ?? ""} />
                 <DetailRow
                   label="Local"
-                  value={resolvedHospital?.name ?? CLINIC_INFO.name}
+                  value={reviewHospitalName ?? CLINIC_INFO.name}
                 />
                 <DetailRow
                   label="Endereço"
-                  value={resolvedHospital?.address ?? CLINIC_INFO.address}
+                  value={reviewHospitalAddress ?? CLINIC_INFO.address}
                 />
                 <DetailRow
                   label="Período"
-                  value={selectedPeriod ?? ""}
+                  value={reviewPeriod}
                   isLast
                 />
               </View>
 
-              {activeSelectionConflict ? (
+              {hasBlockingExistingConflict ? (
                 <View
                   accessibilityRole="alert"
                   className="gap-3 rounded-2xl border border-danger/30 bg-danger/10 p-4"
@@ -858,7 +1049,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
                   <Button
                     label="Escolher outro horário"
                     variant="outline"
-                    onPress={() => setStep(2)}
+                    onPress={handleChooseAnotherSlot}
                   />
                 </View>
               ) : null}
@@ -875,7 +1066,7 @@ export function PatientScheduleScreen({ navigation }: Props) {
                     <Button
                       label="Escolher outro horário"
                       variant="outline"
-                      onPress={() => setStep(2)}
+                      onPress={handleChooseAnotherSlot}
                     />
                   ) : null}
                 </View>
@@ -887,10 +1078,11 @@ export function PatientScheduleScreen({ navigation }: Props) {
                     submitting ? "Confirmando..." : "Confirmar consulta"
                   }
                   disabled={
-                    !resolvedDoctor ||
-                    !date ||
-                    !time ||
-                    Boolean(activeSelectionConflict)
+                    !reviewDoctorId ||
+                    !reviewDate ||
+                    !reviewTime ||
+                    hasBlockingExistingConflict ||
+                    conflictRequiresNewSlot
                   }
                   loading={submitting}
                   onPress={() => {
