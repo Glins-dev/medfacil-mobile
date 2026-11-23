@@ -21,7 +21,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 
-import { AppScreenHeader, Button, Input, Modal } from "@/components";
+import {
+  AppScreenHeader,
+  Button,
+  getFieldFrameStyles,
+  Input,
+  Modal,
+} from "@/components";
 import type { AuthStackParamList } from "@/navigation/types";
 import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
 import { getApiErrorMessage } from "@/services/api";
@@ -333,45 +339,47 @@ export function RegisterScreen({ navigation }: Props) {
                 control={control}
                 name="sexo"
                 render={({ field: { value, onChange } }) => {
-                  const triggerStateClass = errors.sexo?.message
-                    ? "border-[1.5px] border-danger bg-white"
-                    : sexModalOpen
-                      ? "border-[1.5px] border-[#0e706f] bg-white"
-                      : "border border-[#dce5e7] bg-[#f9fcfc]";
+                  const { haloStyle, boxStyle } = getFieldFrameStyles({
+                    active: sexModalOpen,
+                    error: Boolean(errors.sexo?.message),
+                  });
 
                   return (
                     <>
-                      <Pressable
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          setSexModalOpen(true);
-                        }}
-                        disabled={isSubmitting}
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          value
-                            ? `Sexo: ${value}. Toque para alterar`
-                            : "Selecionar sexo"
-                        }
-                        accessibilityState={{
-                          expanded: sexModalOpen,
-                          disabled: isSubmitting,
-                        }}
-                        className={`min-h-[48px] w-full flex-row items-center justify-between gap-3 rounded-2xl px-4 py-3 active:opacity-85 ${triggerStateClass} ${
-                          isSubmitting ? "opacity-60" : ""
-                        }`}
-                      >
-                        <Text
-                          numberOfLines={1}
-                          className={`flex-1 text-base ${
-                            value ? "text-ink" : "text-[#6b7280]"
+                      <View style={haloStyle}>
+                        <Pressable
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setSexModalOpen(true);
+                          }}
+                          disabled={isSubmitting}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            value
+                              ? `Sexo: ${value}. Toque para alterar`
+                              : "Selecionar sexo"
+                          }
+                          accessibilityState={{
+                            expanded: sexModalOpen,
+                            disabled: isSubmitting,
+                          }}
+                          style={boxStyle}
+                          className={`min-h-[48px] w-full flex-row items-center justify-between gap-3 px-4 py-3 active:opacity-85 ${
+                            isSubmitting ? "opacity-60" : ""
                           }`}
                         >
-                          {value || "Selecione o sexo"}
-                        </Text>
+                          <Text
+                            numberOfLines={1}
+                            className={`flex-1 text-base ${
+                              value ? "text-ink" : "text-[#6b7280]"
+                            }`}
+                          >
+                            {value || "Selecione o sexo"}
+                          </Text>
 
-                        <ChevronDownIcon color="#0e706f" />
-                      </Pressable>
+                          <ChevronDownIcon color="#0e706f" />
+                        </Pressable>
+                      </View>
 
                       <Modal
                         open={sexModalOpen}

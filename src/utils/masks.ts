@@ -36,6 +36,13 @@ export function maskDate(value: string): string {
     .replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
 }
 
+/** Aplica máscara HH:mm para horários digitados. */
+export function maskTime(value: string): string {
+  const d = onlyDigits(value).slice(0, 4);
+  if (d.length <= 2) return d;
+  return `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
 /** Valida data real de nascimento no formato DD/MM/AAAA (>= 1900 e não futura). */
 export function isValidBirthDate(value: string): boolean {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);

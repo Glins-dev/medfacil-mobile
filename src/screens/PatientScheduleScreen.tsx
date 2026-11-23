@@ -16,6 +16,7 @@ import Svg, { Path } from "react-native-svg";
 
 import {
   Button,
+  getFieldFrameStyles,
   Modal,
   NoticeCard,
   PatientScreenHeader,
@@ -41,6 +42,7 @@ import {
   type DoctorWithAvailability,
   type Specialty,
 } from "@/services/catalog.service";
+import { useAdminStore } from "@/stores/admin.store";
 import {
   findPatientAppointmentConflict,
   useAppointments,
@@ -160,6 +162,10 @@ function DetailRow({
 export function PatientScheduleScreen({ navigation }: Props) {
   const { appointments: patientAppointments, reload: reloadAppointments } =
     useAppointments();
+  const scheduleSlots = useAdminStore((s) => s.scheduleSlots);
+  const removedSlots = useAdminStore((s) => s.removedSlots);
+  const deletedDoctorIds = useAdminStore((s) => s.deletedDoctorIds);
+  const hospitals = useAdminStore((s) => s.hospitals);
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = 104 + insets.bottom;
 
@@ -190,7 +196,13 @@ export function PatientScheduleScreen({ navigation }: Props) {
     specialtyId
       ? () => catalogService.listAvailableDoctors(specialtyId, upcomingDateStrings)
       : null,
-    [specialtyId, upcomingDateStrings]
+    [
+      specialtyId,
+      upcomingDateStrings,
+      scheduleSlots,
+      removedSlots,
+      deletedDoctorIds,
+    ]
   );
 
   const selectedSpecialty =
@@ -275,6 +287,30 @@ export function PatientScheduleScreen({ navigation }: Props) {
       availableDoctorsForSlot[0]
     );
   }, [availableDoctorsForSlot, pickedDoctorId]);
+
+  const resolvedHospital = useMemo(() => {
+    if (!resolvedDoctor) return null;
+    const matchingSlot =
+      date && time
+        ? scheduleSlots.find(
+            (slot) =>
+              slot.doctorId === resolvedDoctor.id &&
+              slot.date === date &&
+              slot.time === time &&
+              slot.hospitalId
+          )
+        : null;
+    if (matchingSlot?.hospitalId) {
+      const slotHospital = hospitals.find(
+        (h) => h.id === matchingSlot.hospitalId
+      );
+      if (slotHospital) return slotHospital;
+    }
+    return hospitals.find((h) => h.doctorIds.includes(resolvedDoctor.id)) ?? null;
+  }, [date, hospitals, resolvedDoctor, scheduleSlots, time]);
+
+  const dateFrame = getFieldFrameStyles({ active: dateModalOpen });
+  const timeFrame = getFieldFrameStyles({ active: timeModalOpen });
 
   const conflictingSlotsInDay = useMemo(() => {
     if (!date || !selectedDateEntry) return [];
@@ -568,67 +604,74 @@ export function PatientScheduleScreen({ navigation }: Props) {
 
               {doctors.status === "ready" && aggregatedDates.length > 0 ? (
                 <View className="gap-3">
-                  <Pressable
-                    onPress={() => setDateModalOpen(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      selectedDateEntry
-                        ? `Data selecionada: ${formatDayPrefix(
-                          selectedDateEntry.date
-                        )}${selectedDateEntry.weekdayLong}, ${selectedDateEntry.dayMonth}. Toque para alterar`
-                        : "Selecionar data"
-                    }
-                    className="min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 border-brand bg-white px-4 py-2.5 active:opacity-85"
-                  >
-                    <View className="min-w-0 flex-1">
-                      <Text className="text-xs font-medium text-muted">
-                        Data
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        className={`mt-0.5 text-lg font-bold ${selectedDateEntry ? "text-ink" : "text-muted"
-                          }`}
-                      >
-                        {selectedDateEntry
-                          ? `${formatDayPrefix(selectedDateEntry.date)}${selectedDateEntry.weekdayLong
-                          }, ${selectedDateEntry.dayMonth}`
-                          : "Selecione uma data"}
-                      </Text>
-                    </View>
-                    <ChevronDownIcon color="#0e706f" />
-                  </Pressable>
+                  <View style={dateFrame.haloStyle}>
+                    <Pressable
+                      onPress={() => setDateModalOpen(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        selectedDateEntry
+                          ? `Data selecionada: ${formatDayPrefix(
+                            selectedDateEntry.date
+                          )}${selectedDateEntry.weekdayLong}, ${selectedDateEntry.dayMonth}. Toque para alterar`
+                          : "Selecionar data"
+                      }
+                      style={dateFrame.boxStyle}
+                      className="min-h-[64px] flex-row items-center justify-between gap-3 px-4 py-2.5 active:opacity-85"
+                    >
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-xs font-medium text-muted">
+                          Data
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          className={`mt-0.5 text-lg font-bold ${selectedDateEntry ? "text-ink" : "text-muted"
+                            }`}
+                        >
+                          {selectedDateEntry
+                            ? `${formatDayPrefix(selectedDateEntry.date)}${selectedDateEntry.weekdayLong
+                            }, ${selectedDateEntry.dayMonth}`
+                            : "Selecione uma data"}
+                        </Text>
+                      </View>
+                      <ChevronDownIcon color="#0e706f" />
+                    </Pressable>
+                  </View>
 
-                  <Pressable
-                    onPress={() => setTimeModalOpen(true)}
-                    disabled={!date}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      time && selectedPeriod
-                        ? `Horário selecionado: ${time}, ${selectedPeriod}. Toque para alterar`
-                        : "Selecionar horário"
-                    }
-                    accessibilityState={{ disabled: !date }}
-                    className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-2.5 active:opacity-85 ${date ? "border-brand" : "border-line opacity-60"
+                  <View style={timeFrame.haloStyle}>
+                    <Pressable
+                      onPress={() => setTimeModalOpen(true)}
+                      disabled={!date}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        time && selectedPeriod
+                          ? `Horário selecionado: ${time}, ${selectedPeriod}. Toque para alterar`
+                          : "Selecionar horário"
+                      }
+                      accessibilityState={{ disabled: !date }}
+                      style={timeFrame.boxStyle}
+                      className={`min-h-[64px] flex-row items-center justify-between gap-3 px-4 py-2.5 active:opacity-85 ${
+                        !date ? "opacity-60" : ""
                       }`}
-                  >
-                    <View className="min-w-0 flex-1">
-                      <Text className="text-xs font-medium text-muted">
-                        Horário
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        className={`mt-0.5 text-lg font-bold ${time ? "text-ink" : "text-muted"
-                          }`}
-                      >
-                        {time && selectedPeriod
-                          ? `${time} · ${selectedPeriod}`
-                          : date
-                            ? "Selecione um horário"
-                            : "Escolha uma data primeiro"}
-                      </Text>
-                    </View>
-                    <ChevronDownIcon color={date ? "#0e706f" : "#5f6b6f"} />
-                  </Pressable>
+                    >
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-xs font-medium text-muted">
+                          Horário
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          className={`mt-0.5 text-lg font-bold ${time ? "text-ink" : "text-muted"
+                            }`}
+                        >
+                          {time && selectedPeriod
+                            ? `${time} · ${selectedPeriod}`
+                            : date
+                              ? "Selecione um horário"
+                              : "Escolha uma data primeiro"}
+                        </Text>
+                      </View>
+                      <ChevronDownIcon color={date ? "#0e706f" : "#5f6b6f"} />
+                    </Pressable>
+                  </View>
 
                   {date && conflictingSlotsInDay.length > 0 ? (
                     <View
@@ -681,7 +724,8 @@ export function PatientScheduleScreen({ navigation }: Props) {
                               {resolvedDoctor.name}
                             </Text>
                             <Text className="text-xs font-medium text-muted">
-                              {CLINIC_INFO.name} · CRM {resolvedDoctor.crm}
+                              {resolvedHospital?.name ?? CLINIC_INFO.name} · CRM{" "}
+                              {resolvedDoctor.crm}
                             </Text>
 
                             <View className="mt-1 flex-row items-center gap-2.5">
@@ -787,8 +831,14 @@ export function PatientScheduleScreen({ navigation }: Props) {
                   }
                 />
                 <DetailRow label="Horário" value={time ?? ""} />
-                <DetailRow label="Local" value={CLINIC_INFO.name} />
-                <DetailRow label="Endereço" value={CLINIC_INFO.address} />
+                <DetailRow
+                  label="Local"
+                  value={resolvedHospital?.name ?? CLINIC_INFO.name}
+                />
+                <DetailRow
+                  label="Endereço"
+                  value={resolvedHospital?.address ?? CLINIC_INFO.address}
+                />
                 <DetailRow
                   label="Período"
                   value={selectedPeriod ?? ""}
@@ -1025,6 +1075,9 @@ export function PatientScheduleScreen({ navigation }: Props) {
         >
           {availableDoctorsForSlot.map((doctor) => {
             const selected = doctor.id === resolvedDoctor?.id;
+            const doctorHospital = hospitals.find((h) =>
+              h.doctorIds.includes(doctor.id)
+            );
             return (
               <Pressable
                 key={doctor.id}
@@ -1045,7 +1098,8 @@ export function PatientScheduleScreen({ navigation }: Props) {
                     {doctor.name}
                   </Text>
                   <Text className="text-xs text-muted">
-                    {CLINIC_INFO.name} · CRM {doctor.crm}
+                    {doctorHospital?.name ?? CLINIC_INFO.name} · CRM{" "}
+                    {doctor.crm}
                   </Text>
                 </View>
                 {selected ? <CheckIcon color="#0e706f" size={18} /> : null}

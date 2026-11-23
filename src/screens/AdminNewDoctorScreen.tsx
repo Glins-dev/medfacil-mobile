@@ -17,7 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Path } from "react-native-svg";
 
-import { AppScreenHeader, Button, Input, Modal } from "@/components";
+import {
+  AppScreenHeader,
+  Button,
+  getFieldFrameStyles,
+  Input,
+  Modal,
+} from "@/components";
 import { NewSpecialtyModal } from "@/components/modals/NewSpecialtyModal";
 import { StethoscopeIcon } from "@/navigation/icons";
 import type { AdminTabParamList } from "@/navigation/types";
@@ -439,49 +445,51 @@ export function AdminNewDoctorScreen({ navigation }: Props) {
                           ? selectedItems.map((s) => s.name).join(", ")
                           : "Selecione uma ou mais especialidades";
 
-                    const triggerBorderClass = errors.specialtyIds?.message
-                      ? "border-danger"
-                      : selectedItems.length > 0
-                        ? "border-[#0e706f]"
-                        : "border-[#d6e0e2]";
+                    const { haloStyle, boxStyle } = getFieldFrameStyles({
+                      active: dropdownOpen,
+                      error: Boolean(errors.specialtyIds?.message),
+                    });
 
                     return (
                       <View className="gap-3">
-                        <Pressable
-                          onPress={() => setDropdownOpen(true)}
-                          disabled={isSubmitting}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            selectedItems.length > 0
-                              ? `Especialidades selecionadas: ${summaryText}. Toque para alterar`
-                              : "Selecionar especialidades médicas"
-                          }
-                          accessibilityState={{
-                            expanded: dropdownOpen,
-                            disabled: isSubmitting,
-                          }}
-                          className={`min-h-[64px] flex-row items-center justify-between gap-3 rounded-2xl border-2 bg-white px-4 py-2.5 active:opacity-85 ${triggerBorderClass} ${
-                            isSubmitting ? "opacity-60" : ""
-                          }`}
-                        >
-                          <View className="min-w-0 flex-1">
-                            <Text className="text-xs font-medium text-[#6b7280]">
-                              Especialidades
-                            </Text>
-                            <Text
-                              numberOfLines={1}
-                              className={`mt-0.5 text-base font-bold ${
-                                selectedItems.length > 0
-                                  ? "text-[#004959]"
-                                  : "text-[#6b7280]"
-                              }`}
-                            >
-                              {summaryText}
-                            </Text>
-                          </View>
+                        <View style={haloStyle}>
+                          <Pressable
+                            onPress={() => setDropdownOpen(true)}
+                            disabled={isSubmitting}
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                              selectedItems.length > 0
+                                ? `Especialidades selecionadas: ${summaryText}. Toque para alterar`
+                                : "Selecionar especialidades médicas"
+                            }
+                            accessibilityState={{
+                              expanded: dropdownOpen,
+                              disabled: isSubmitting,
+                            }}
+                            style={boxStyle}
+                            className={`min-h-[64px] flex-row items-center justify-between gap-3 px-4 py-2.5 active:opacity-85 ${
+                              isSubmitting ? "opacity-60" : ""
+                            }`}
+                          >
+                            <View className="min-w-0 flex-1">
+                              <Text className="text-xs font-medium text-[#6b7280]">
+                                Especialidades
+                              </Text>
+                              <Text
+                                numberOfLines={1}
+                                className={`mt-0.5 text-base font-bold ${
+                                  selectedItems.length > 0
+                                    ? "text-[#004959]"
+                                    : "text-[#6b7280]"
+                                }`}
+                              >
+                                {summaryText}
+                              </Text>
+                            </View>
 
-                          <ChevronDownIcon color="#0e706f" />
-                        </Pressable>
+                            <ChevronDownIcon color="#0e706f" />
+                          </Pressable>
+                        </View>
 
                         {selectedItems.length > 0 ? (
                           <View className="flex-row flex-wrap gap-2">

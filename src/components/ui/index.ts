@@ -5,6 +5,7 @@ export {
 export { BrandLogo, type BrandLogoProps } from "./BrandLogo";
 export { Button, type ButtonProps, type ButtonVariant } from "./Button";
 export { FloatingTabBar } from "./FloatingTabBar";
+export { fieldFocusStyles, getFieldFrameStyles } from "./focusGlow";
 export { Input, Input as Field, type InputProps } from "./Input";
 export { Modal, type ModalProps } from "./Modal";
 export {

@@ -40,4 +40,6 @@ export type DoctorTabParamList = {
 export type AdminTabParamList = {
   AdminHome: undefined;
   AdminDoctors: undefined;
+  AdminHospitals: undefined;
+  AdminSchedules: undefined;
 };

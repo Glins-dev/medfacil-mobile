@@ -69,3 +69,12 @@ export function UserIcon({ color, size = 24 }: IconProps) {
     </Svg>
   );
 }
+
+export function BuildingHospitalIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...common}>
+      <Rect x="4.5" y="4" width="15" height="16.5" rx="2" />
+      <Path d="M9.5 20.5v-4.5h5v4.5M12 8v4M10 10h4M8 14h1.5M14.5 14H16" />
+    </Svg>
+  );
+}

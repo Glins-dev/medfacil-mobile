@@ -2,8 +2,15 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { FloatingTabBar } from "@/components/ui";
 import { AdminHomeScreen } from "@/screens/AdminHomeScreen";
+import { AdminHospitalsScreen } from "@/screens/AdminHospitalsScreen";
 import { AdminNewDoctorScreen } from "@/screens/AdminNewDoctorScreen";
-import { HomeIcon, StethoscopeIcon } from "./icons";
+import { AdminSchedulesScreen } from "@/screens/AdminSchedulesScreen";
+import {
+  BuildingHospitalIcon,
+  CalendarIcon,
+  HomeIcon,
+  StethoscopeIcon,
+} from "./icons";
 import type { AdminTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
@@ -35,6 +42,28 @@ export function AdminTabs() {
           tabBarAccessibilityLabel: "Cadastro de médicos",
           tabBarIcon: ({ color, size }) => (
             <StethoscopeIcon color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AdminHospitals"
+        component={AdminHospitalsScreen}
+        options={{
+          title: "Hospitais",
+          tabBarAccessibilityLabel: "Hospitais e vínculos",
+          tabBarIcon: ({ color, size }) => (
+            <BuildingHospitalIcon color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AdminSchedules"
+        component={AdminSchedulesScreen}
+        options={{
+          title: "Horários",
+          tabBarAccessibilityLabel: "Gerenciar horários",
+          tabBarIcon: ({ color, size }) => (
+            <CalendarIcon color={color} size={size} />
           ),
         }}
       />

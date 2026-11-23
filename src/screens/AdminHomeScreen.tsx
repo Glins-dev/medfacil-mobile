@@ -17,14 +17,18 @@ import {
   AppScreenHeader,
   Button,
   MainCard,
+  Modal,
   QuickAccessCard,
 } from "@/components";
 import { NewSpecialtyModal } from "@/components/modals/NewSpecialtyModal";
+import { BuildingHospitalIcon, CalendarIcon } from "@/navigation/icons";
 import type { AdminTabParamList } from "@/navigation/types";
 import { adminService, type AdminSpecialty } from "@/services/admin.service";
 import { getApiErrorMessage } from "@/services/api";
 import { authService } from "@/services/auth.service";
+import { useAdminStore } from "@/stores/admin.store";
 import { useAuthStore } from "@/stores/auth.store";
+import type { AdminDoctor } from "@/types/admin";
 import { getSpecialtyImage, MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<AdminTabParamList, "AdminHome">;
@@ -101,10 +105,12 @@ function DoctorPlusIcon() {
   );
 }
 
-// Tela inicial do administrador alinhada a identidade visual do paciente.
+// Painel administrativo com gestao de especialidades, medicos, hospitais e horarios.
 export function AdminHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const doctors = useAdminStore((s) => s.doctors);
+  const hospitals = useAdminStore((s) => s.hospitals);
 
   const [specialties, setSpecialties] = useState<AdminSpecialty[]>([]);
   const [status, setStatus] = useState<LoadStatus>("loading");
@@ -112,20 +118,26 @@ export function AdminHomeScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [specialtyModalOpen, setSpecialtyModalOpen] = useState(false);
+  const [doctorToDelete, setDoctorToDelete] = useState<AdminDoctor | null>(
+    null
+  );
+  const [deletingDoctor, setDeletingDoctor] = useState(false);
   const [notice, setNotice] = useState("");
 
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = 104 + insets.bottom;
 
-  const loadSpecialties = useCallback(async (isRefresh = false) => {
+  const loadDashboard = useCallback(async (isRefresh = false) => {
     if (!isRefresh) {
       setStatus("loading");
     }
     setErrorMessage("");
     try {
       const items = await adminService.listSpecialties();
-      setSpecialties([...items].sort(byName));
+      const sorted = [...items].sort(byName);
+      setSpecialties(sorted);
       setStatus("ready");
+      await adminService.listDoctors(sorted);
     } catch (error) {
       setErrorMessage(
         getApiErrorMessage(error, "Não foi possível carregar as especialidades.")
@@ -143,8 +155,10 @@ export function AdminHomeScreen({ navigation }: Props) {
       try {
         const items = await adminService.listSpecialties();
         if (!active) return;
-        setSpecialties([...items].sort(byName));
+        const sorted = [...items].sort(byName);
+        setSpecialties(sorted);
         setStatus("ready");
+        await adminService.listDoctors(sorted);
       } catch (error) {
         if (!active) return;
         setErrorMessage(
@@ -166,14 +180,14 @@ export function AdminHomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 4000);
+    const timer = setTimeout(() => setNotice(""), 4500);
     return () => clearTimeout(timer);
   }, [notice]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadSpecialties(true);
+      await loadDashboard(true);
     } finally {
       setRefreshing(false);
     }
@@ -202,13 +216,28 @@ export function AdminHomeScreen({ navigation }: Props) {
     setNotice(`Especialidade "${created.name}" cadastrada.`);
   };
 
+  const handleConfirmDeleteDoctor = async () => {
+    if (!doctorToDelete || deletingDoctor) return;
+    setDeletingDoctor(true);
+    try {
+      const removedName = doctorToDelete.name;
+      await adminService.deleteDoctor(doctorToDelete.id);
+      setDoctorToDelete(null);
+      setNotice(
+        `Médico ${removedName} removido junto com vínculos e horários associados.`
+      );
+    } finally {
+      setDeletingDoctor(false);
+    }
+  };
+
   const firstName = user?.name.trim().split(/\s+/)[0] ?? "";
 
   return (
     <View className="flex-1 bg-[#f8fbfb]">
       <AppScreenHeader
         title={firstName ? `Olá, ${firstName}` : "Painel Administrativo"}
-        subtitle="Gestão de especialidades e cadastro de médicos."
+        subtitle="Gestão de especialidades, médicos, hospitais e horários."
         icon={<AdminPanelIcon />}
       />
 
@@ -236,27 +265,164 @@ export function AdminHomeScreen({ navigation }: Props) {
           onAction={() => navigation.navigate("AdminDoctors")}
         />
 
+        {notice ? (
+          <View
+            accessibilityRole="alert"
+            className="rounded-2xl border border-[#0e706f]/30 bg-[#dbf0ef] px-4 py-3.5"
+          >
+            <Text className="text-sm font-semibold text-[#004959]">
+              {notice}
+            </Text>
+          </View>
+        ) : null}
+
         <View className="gap-3">
           <Text className="text-xl font-bold text-[#004959]">
             Acesso rápido
           </Text>
 
-          <View className="flex-row gap-3">
-            <QuickAccessCard
-              className="flex-1 border-[#e6ecee]"
-              label="Especialidades"
-              subtitle="Listar e criar novas"
-              icon={<SpecialtiesIcon />}
-              onPress={() => setSpecialtyModalOpen(true)}
-            />
-            <QuickAccessCard
-              className="flex-1 border-[#e6ecee]"
-              label="Novo médico"
-              subtitle="Vincular CRM e áreas"
-              icon={<DoctorPlusIcon />}
-              onPress={() => navigation.navigate("AdminDoctors")}
-            />
+          <View className="gap-3">
+            <View className="flex-row gap-3">
+              <QuickAccessCard
+                className="flex-1 border-[#e6ecee]"
+                label="Especialidades"
+                subtitle="Listar e criar novas"
+                icon={<SpecialtiesIcon />}
+                onPress={() => setSpecialtyModalOpen(true)}
+              />
+              <QuickAccessCard
+                className="flex-1 border-[#e6ecee]"
+                label="Novo médico"
+                subtitle="Vincular CRM e áreas"
+                icon={<DoctorPlusIcon />}
+                onPress={() => navigation.navigate("AdminDoctors")}
+              />
+            </View>
+
+            <View className="flex-row gap-3">
+              <QuickAccessCard
+                className="flex-1 border-[#e6ecee]"
+                label="Hospitais"
+                subtitle="Unidades e vínculos"
+                icon={<BuildingHospitalIcon color="#0e706f" size={24} />}
+                onPress={() => navigation.navigate("AdminHospitals")}
+              />
+              <QuickAccessCard
+                className="flex-1 border-[#e6ecee]"
+                label="Horários"
+                subtitle="Agenda dos médicos"
+                icon={<CalendarIcon color="#0e706f" size={24} />}
+                onPress={() => navigation.navigate("AdminSchedules")}
+              />
+            </View>
           </View>
+        </View>
+
+        <View className="gap-3">
+          <View className="flex-row items-center justify-between gap-2">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-xl font-bold text-[#004959]">
+                Médicos cadastrados
+              </Text>
+              <View className="rounded-full bg-[#dbf0ef] px-2.5 py-0.5">
+                <Text className="text-xs font-bold text-[#004959]">
+                  {doctors.length}
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => navigation.navigate("AdminDoctors")}
+              accessibilityRole="button"
+              accessibilityLabel="Cadastrar novo médico"
+              className="min-h-[48px] items-center justify-center rounded-xl border border-[#0e706f] bg-white px-4 active:opacity-80"
+            >
+              <Text className="text-sm font-bold text-[#0e706f]">+ Novo</Text>
+            </Pressable>
+          </View>
+
+          {status === "loading" && doctors.length === 0 ? (
+            <View
+              style={styles.cardShadow}
+              className="min-h-[100px] items-center justify-center gap-2 rounded-2xl border border-[#e6ecee] bg-white p-6"
+            >
+              <ActivityIndicator size="small" color="#0e706f" />
+              <Text className="text-sm text-[#6b7280]">
+                Carregando médicos...
+              </Text>
+            </View>
+          ) : doctors.length === 0 ? (
+            <View className="gap-2 rounded-2xl border border-[#e6ecee] bg-white p-4">
+              <Text className="text-base font-bold text-[#004959]">
+                Nenhum médico cadastrado
+              </Text>
+              <Text className="text-sm text-[#6b7280]">
+                Cadastre um profissional para gerenciar hospitais e horários.
+              </Text>
+            </View>
+          ) : (
+            <View className="gap-3">
+              {doctors.map((doctor) => {
+                const linkedHospitals = hospitals
+                  .filter((hosp) => hosp.doctorIds.includes(doctor.id))
+                  .map((hosp) => hosp.name);
+
+                return (
+                  <View
+                    key={doctor.id}
+                    style={styles.cardShadow}
+                    className="gap-3 rounded-2xl border border-[#e6ecee] bg-white p-4"
+                  >
+                    <View className="flex-row items-start justify-between gap-3">
+                      <View className="min-w-0 flex-1 gap-1">
+                        <Text
+                          numberOfLines={1}
+                          className="text-base font-bold text-[#004959]"
+                        >
+                          {doctor.name}
+                        </Text>
+                        <Text className="text-xs font-semibold text-[#0e706f]">
+                          CRM {doctor.crm}
+                        </Text>
+                      </View>
+
+                      <Pressable
+                        onPress={() => setDoctorToDelete(doctor)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Excluir médico ${doctor.name}`}
+                        className="min-h-[48px] items-center justify-center rounded-xl border border-danger bg-white px-4 active:opacity-80"
+                      >
+                        <Text className="text-sm font-bold text-danger">
+                          Excluir
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    {doctor.specialtyNames.length > 0 ? (
+                      <View className="flex-row flex-wrap gap-1.5">
+                        {doctor.specialtyNames.map((specName) => (
+                          <View
+                            key={`${doctor.id}-${specName}`}
+                            className="rounded-full bg-[#dbf0ef] px-2.5 py-1"
+                          >
+                            <Text className="text-xs font-bold text-[#004959]">
+                              {specName}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    <Text className="text-xs text-[#6b7280]">
+                      {linkedHospitals.length > 0
+                        ? `Hospitais: ${linkedHospitals.join(", ")}`
+                        : "Nenhum hospital vinculado"}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View className="gap-3">
@@ -284,17 +450,6 @@ export function AdminHomeScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {notice ? (
-            <View
-              accessibilityRole="alert"
-              className="rounded-2xl border border-[#0e706f]/30 bg-[#dbf0ef] px-4 py-3.5"
-            >
-              <Text className="text-sm font-semibold text-[#004959]">
-                {notice}
-              </Text>
-            </View>
-          ) : null}
-
           {status === "loading" ? (
             <View
               style={styles.cardShadow}
@@ -319,7 +474,7 @@ export function AdminHomeScreen({ navigation }: Props) {
                 label="Tentar novamente"
                 variant="outline"
                 onPress={() => {
-                  void loadSpecialties();
+                  void loadDashboard();
                 }}
               />
             </View>
@@ -404,6 +559,44 @@ export function AdminHomeScreen({ navigation }: Props) {
         onClose={() => setSpecialtyModalOpen(false)}
         onCreated={handleSpecialtyCreated}
       />
+
+      <Modal
+        open={Boolean(doctorToDelete)}
+        onClose={deletingDoctor ? () => {} : () => setDoctorToDelete(null)}
+        title="Excluir médico"
+        closeLabel="Cancelar exclusão de médico"
+      >
+        {doctorToDelete ? (
+          <View className="gap-4">
+            <View className="rounded-2xl border border-[#e5b12c] bg-[#F7C343]/30 p-4">
+              <Text className="text-base font-bold text-[#004959]">
+                {doctorToDelete.name} (CRM {doctorToDelete.crm})
+              </Text>
+              <Text className="mt-1 text-sm text-[#004959]">
+                Ao confirmar a exclusão, todos os vínculos com hospitais e
+                horários cadastrados para este profissional serão removidos.
+              </Text>
+            </View>
+
+            <View className="gap-2.5">
+              <Button
+                label={deletingDoctor ? "Excluindo..." : "Confirmar exclusão"}
+                variant="danger"
+                loading={deletingDoctor}
+                onPress={() => {
+                  void handleConfirmDeleteDoctor();
+                }}
+              />
+              <Button
+                label="Cancelar"
+                variant="outline"
+                disabled={deletingDoctor}
+                onPress={() => setDoctorToDelete(null)}
+              />
+            </View>
+          </View>
+        ) : null}
+      </Modal>
     </View>
   );
 }
