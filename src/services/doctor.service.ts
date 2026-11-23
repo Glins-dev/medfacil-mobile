@@ -13,6 +13,7 @@ export interface DoctorAppointment {
   dateTime: string; // ISO (UTC)
   status: AppointmentStatus;
   attendanceStatus: AttendanceStatus;
+  patientId?: string | null;
   patientName: string;
   reason: string | null;
 }

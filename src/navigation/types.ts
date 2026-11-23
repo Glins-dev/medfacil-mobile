@@ -14,12 +14,22 @@ export type PatientTabParamList = {
   PatientProfile: undefined;
 };
 
+export interface BookingConfirmedParams {
+  appointmentId: string;
+  specialty: string | null;
+  doctorName: string;
+  doctorCrm?: string;
+  dateTime: string;
+}
+
 export type PatientStackParamList = {
   PatientTabs: NavigatorScreenParams<PatientTabParamList> | undefined;
   PatientAppointmentDetails: { appointmentId: string };
   PatientConfirmAttendance: { appointmentId: string };
   PatientAppointmentCanceled: undefined;
   PatientAttendanceConfirmed: { appointmentId: string };
+  PatientBookingConfirmed: BookingConfirmedParams;
+  PatientPrescriptions: undefined;
 };
 
 export type DoctorTabParamList = {

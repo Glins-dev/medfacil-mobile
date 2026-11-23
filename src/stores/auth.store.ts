@@ -13,6 +13,7 @@ export interface SessionUser {
   name: string;
   email: string;
   role: UserRole;
+  crm?: string | null;
   cpf?: string | null;
   birthDate?: string | null;
   dataNascimento?: string | null;

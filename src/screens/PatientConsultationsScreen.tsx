@@ -18,7 +18,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Button, DateBadge } from "@/components";
+import { BrandLogo, Button, DateBadge } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import type {
   PatientStackParamList,
@@ -270,12 +270,15 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   const renderHeader = () => (
     <View className="gap-4 pb-4">
       <View>
-        <Text
-          accessibilityRole="header"
-          className="text-3xl font-bold text-ink"
-        >
-          Consultas
-        </Text>
+        <View className="flex-row items-center justify-between gap-3">
+          <Text
+            accessibilityRole="header"
+            className="text-3xl font-bold text-ink"
+          >
+            Consultas
+          </Text>
+          <BrandLogo height={26} />
+        </View>
         <Text className="mt-1 text-base text-muted">
           Acompanhe seus horários agendados e seu histórico.
         </Text>

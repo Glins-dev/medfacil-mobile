@@ -15,7 +15,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path, Rect } from "react-native-svg";
 
-import { Button } from "@/components";
+import { BrandLogo, Button } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import type { PatientStackParamList } from "@/navigation/types";
 import { useAppointmentStore } from "@/stores/appointment.store";
@@ -105,13 +105,17 @@ export function PatientAttendanceConfirmedScreen({ navigation, route }: Props) {
           end={{ x: 1, y: 1 }}
           style={{
             paddingHorizontal: 24,
-            paddingTop: 28,
+            paddingTop: 16,
             paddingBottom: 28,
             alignItems: "center",
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
           }}
         >
+          <View className="mb-3 w-full items-end">
+            <BrandLogo height={24} />
+          </View>
+
           <Image
             source={CHECK_ICON}
             resizeMode="contain"

@@ -10,3 +10,7 @@ export {
   NewSpecialtyModal,
   type NewSpecialtyModalProps,
 } from "./NewSpecialtyModal";
+export {
+  SendPrescriptionModal,
+  type SendPrescriptionModalProps,
+} from "./SendPrescriptionModal";

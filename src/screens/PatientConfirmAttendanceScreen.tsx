@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path, Rect } from "react-native-svg";
 
 import {
+  BrandLogo,
   Button,
   CancelAppointmentModal,
   RescheduleAppointmentModal,
@@ -143,14 +144,20 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
           borderBottomRightRadius: 28,
         }}
       >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          className="min-h-[48px] min-w-[48px] self-start items-center justify-center rounded-full bg-white/20 active:opacity-80"
-        >
-          <ArrowLeftWhiteIcon />
-        </Pressable>
+        <View className="flex-row items-center justify-between gap-3">
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-white/20 active:opacity-80"
+          >
+            <ArrowLeftWhiteIcon />
+          </Pressable>
+
+          <View className="rounded-full bg-white/95 px-3 py-1.5">
+            <BrandLogo height={20} />
+          </View>
+        </View>
 
         <View className="mt-4 flex-row items-center justify-between gap-4">
           <View className="min-w-0 flex-1 gap-1">

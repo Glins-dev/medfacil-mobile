@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import {
+  BrandLogo,
   Button,
   CancelAppointmentModal,
   RescheduleAppointmentModal,
@@ -292,6 +293,10 @@ export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
           >
             <ArrowLeftWhiteIcon />
           </Pressable>
+
+          <View className="rounded-full bg-white/95 px-2.5 py-1">
+            <BrandLogo height={18} />
+          </View>
 
           <View
             className={`rounded-full px-3.5 py-1.5 ${statusBadge.badgeClass}`}

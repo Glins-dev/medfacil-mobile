@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,6 +20,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
+  BrandLogo,
   Button,
   DateBadge,
   FeatureCard,
@@ -47,8 +47,6 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<PatientStackParamList>
 >;
 
-const LOGO_MEDFACIL =
-  require("../../assets/icons/logo-medfacil.png") as ImageSourcePropType;
 const ICON_CONSULTAS =
   require("../../assets/icons/icone-consultas.png") as ImageSourcePropType;
 const ICON_MINHAS_RECEITAS =
@@ -122,13 +120,7 @@ export function PatientHomeScreen({ navigation }: Props) {
         }
       >
         <View className="items-end">
-          <Image
-            source={LOGO_MEDFACIL}
-            resizeMode="contain"
-            accessibilityLabel="Medfácil"
-            accessible
-            style={{ width: 132, height: 32 }}
-          />
+          <BrandLogo height={32} />
         </View>
 
         <View>
@@ -245,7 +237,7 @@ export function PatientHomeScreen({ navigation }: Props) {
               title="Minhas receitas"
               description="Consulte prescrições e orientações médicas."
               imageSource={ICON_MINHAS_RECEITAS}
-              onPress={() => setComingSoonTitle("Minhas receitas")}
+              onPress={() => navigation.navigate("PatientPrescriptions")}
             />
 
             <FeatureCard

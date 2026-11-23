@@ -17,7 +17,7 @@ import {
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Button, Modal } from "@/components";
+import { BrandLogo, Button, Modal } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import { UserIcon } from "@/navigation/icons";
 import type { PatientTabParamList } from "@/navigation/types";
@@ -249,14 +249,18 @@ export function PatientProfileScreen({ navigation }: Props) {
             borderBottomRightRadius: 28,
           }}
         >
-          <Pressable
-            onPress={() => navigation.navigate("PatientHome")}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar para início"
-            className="min-h-[48px] min-w-[48px] self-start items-center justify-center rounded-full bg-white active:opacity-80"
-          >
-            <ArrowLeftTealIcon />
-          </Pressable>
+          <View className="flex-row items-center justify-between gap-3">
+            <Pressable
+              onPress={() => navigation.navigate("PatientHome")}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar para início"
+              className="min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-white active:opacity-80"
+            >
+              <ArrowLeftTealIcon />
+            </Pressable>
+
+            <BrandLogo height={26} />
+          </View>
 
           <View className="mt-4 flex-row items-center justify-between gap-4">
             <View className="min-w-0 flex-1 gap-1">
