@@ -60,3 +60,12 @@ export function GridIcon({ color, size = 24 }: IconProps) {
     </Svg>
   );
 }
+
+export function UserIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...common}>
+      <Circle cx="12" cy="8.2" r="3.6" />
+      <Path d="M5 19.6a7 7 0 0 1 14 0" />
+    </Svg>
+  );
+}

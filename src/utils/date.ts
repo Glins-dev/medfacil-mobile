@@ -205,3 +205,50 @@ export function isValidDate(value: string): boolean {
     date <= new Date()
   );
 }
+
+// Calcula a idade em anos a partir de DD/MM/AAAA ou AAAA-MM-DD no fuso America/Recife.
+export function calculateAge(
+  birthDate?: string | null,
+  referenceDate: Date = new Date()
+): number | null {
+  const raw = birthDate?.trim();
+  if (!raw) return null;
+
+  let year: number;
+  let month: number;
+  let day: number;
+
+  const brMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw);
+  if (brMatch) {
+    day = Number(brMatch[1]);
+    month = Number(brMatch[2]);
+    year = Number(brMatch[3]);
+  } else {
+    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/.exec(raw);
+    if (!isoMatch) return null;
+    year = Number(isoMatch[1]);
+    month = Number(isoMatch[2]);
+    day = Number(isoMatch[3]);
+  }
+
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  const checkDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    checkDate.getUTCFullYear() !== year ||
+    checkDate.getUTCMonth() !== month - 1 ||
+    checkDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  const today = getClinicDateParts(referenceDate);
+  let age = today.year - year;
+  if (today.month < month || (today.month === month && today.day < day)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}

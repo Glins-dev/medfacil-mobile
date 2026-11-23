@@ -13,7 +13,9 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
   Button,
@@ -24,20 +26,31 @@ import {
   QuickAccessCard,
 } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
-import type { PatientTabParamList } from "@/navigation/types";
+import type {
+  PatientStackParamList,
+  PatientTabParamList,
+} from "@/navigation/types";
 import { authService } from "@/services/auth.service";
-import { useNextAppointment } from "@/stores/appointment.store";
+import {
+  getEffectiveAppointmentStatus,
+  useAppointmentStore,
+  useNextAppointment,
+} from "@/stores/appointment.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { describeDate, formatTime, getClinicDateKey } from "@/utils/date";
 import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
-type Props = BottomTabScreenProps<PatientTabParamList, "PatientHome">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<PatientTabParamList, "PatientHome">,
+  NativeStackScreenProps<PatientStackParamList>
+>;
 
 // Tela inicial do paciente fiel ao design: hero de agendamento, proxima consulta e acesso rapido.
 export function PatientHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { appointment, status, reload } = useNextAppointment();
+  const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
@@ -52,6 +65,11 @@ export function PatientHomeScreen({ navigation }: Props) {
   const appointmentDateInfo = appointment
     ? describeDate(getClinicDateKey(appointment.dateTime))
     : null;
+  const effectiveNextStatus = appointment
+    ? getEffectiveAppointmentStatus(appointment, attendanceById[appointment.id])
+    : null;
+  const nextStatusSuffix =
+    effectiveNextStatus === "CONFIRMADO" ? " · Presença confirmada" : "";
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -112,11 +130,7 @@ export function PatientHomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Sair da conta"
             accessibilityState={{ disabled: loggingOut, busy: loggingOut }}
-
             className="min-h-[48px] min-w-[48px] items-center justify-center rounded-xl border border-line bg-white px-4 active:opacity-70"
-
-            className="min-h-[48px] min-w-[48px] justify-center rounded-lg px-2 active:opacity-70"
-
           >
             <Text className="text-sm font-semibold text-brand">
               {loggingOut ? "Saindo..." : "Sair"}
@@ -182,8 +196,13 @@ export function PatientHomeScreen({ navigation }: Props) {
               }
               title={appointment.specialty ?? "Consulta"}
               subtitle={appointment.doctorName}
-              detail={`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}`}
-              onPress={() => navigation.navigate("PatientConsultations")}
+              detail={`${formatTime(appointment.dateTime)} · ${CLINIC_INFO.unitLabel}${nextStatusSuffix}`}
+              accessibilityLabel={`Ver detalhes da consulta de ${appointment.specialty ?? "Consulta"} com ${appointment.doctorName}`}
+              onPress={() =>
+                navigation.navigate("PatientAppointmentDetails", {
+                  appointmentId: appointment.id,
+                })
+              }
             />
           ) : null}
 

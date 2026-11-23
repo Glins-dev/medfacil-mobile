@@ -1,4 +1,5 @@
 import { onlyDigits } from "@/utils/cpf";
+export { maskCpf } from "@/utils/cpf";
 
 const CRM_PATTERN = /^\d{4,7}\/[A-Z]{2}$/;
 

@@ -13,6 +13,12 @@ export interface SessionUser {
   name: string;
   email: string;
   role: UserRole;
+  cpf?: string | null;
+  birthDate?: string | null;
+  dataNascimento?: string | null;
+  matricula?: string | null;
+  registrationNumber?: string | null;
+  patientCode?: string | null;
 }
 
 export interface AuthState {

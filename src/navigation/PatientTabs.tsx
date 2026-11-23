@@ -7,13 +7,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PatientConsultationsScreen } from "@/screens/PatientConsultationsScreen";
 import { PatientHomeScreen } from "@/screens/PatientHomeScreen";
-import { PatientMoreScreen } from "@/screens/PatientMoreScreen";
+import { PatientProfileScreen } from "@/screens/PatientProfileScreen";
 import { PatientScheduleScreen } from "@/screens/PatientScheduleScreen";
 import {
   CalendarIcon,
-  GridIcon,
   HomeIcon,
   StethoscopeIcon,
+  UserIcon,
 } from "./icons";
 import type { PatientTabParamList } from "./types";
 
@@ -208,12 +208,13 @@ export function PatientTabs() {
         }}
       />
       <Tab.Screen
-        name="PatientMore"
-        component={PatientMoreScreen}
+        name="PatientProfile"
+        component={PatientProfileScreen}
         options={{
-          title: "Mais",
+          title: "Perfil",
+          tabBarAccessibilityLabel: "Perfil do paciente",
           tabBarIcon: ({ color, size }) => (
-            <GridIcon color={color} size={size} />
+            <UserIcon color={color} size={size} />
           ),
         }}
       />

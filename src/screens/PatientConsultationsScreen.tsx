@@ -13,14 +13,24 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { Button, DateBadge } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
-import type { PatientTabParamList } from "@/navigation/types";
+import type {
+  PatientStackParamList,
+  PatientTabParamList,
+} from "@/navigation/types";
 import type { Appointment, AppointmentStatus } from "@/services/appointment.service";
-import { useAppointments } from "@/stores/appointment.store";
+import {
+  getEffectiveAppointmentStatus,
+  useAppointments,
+  useAppointmentStore,
+  type AttendanceConfirmationStatus,
+} from "@/stores/appointment.store";
 import {
   describeDate,
   formatDayMonth,
@@ -30,7 +40,10 @@ import {
   getPeriod,
 } from "@/utils/date";
 
-type Props = BottomTabScreenProps<PatientTabParamList, "PatientConsultations">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<PatientTabParamList, "PatientConsultations">,
+  NativeStackScreenProps<PatientStackParamList>
+>;
 
 type ConsultationFilter = "ALL" | "UPCOMING" | "HISTORY";
 
@@ -142,16 +155,30 @@ function StatusIcon({
 function ConsultationCard({
   item,
   nowIso,
+  attendance,
+  onPress,
 }: {
   item: Appointment;
   nowIso: string;
+  attendance?: AttendanceConfirmationStatus;
+  onPress: () => void;
 }) {
-  const visualStatus = resolveVisualStatus(item.status, item.dateTime, nowIso);
+  const effectiveStatus = getEffectiveAppointmentStatus(item, attendance);
+  const visualStatus = resolveVisualStatus(
+    effectiveStatus,
+    item.dateTime,
+    nowIso
+  );
   const badge = STATUS_STYLE[visualStatus];
   const dateInfo = describeDate(getClinicDateKey(item.dateTime));
 
   return (
-    <View className="gap-3 rounded-2xl border border-line bg-white p-4">
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver detalhes da consulta de ${item.specialty ?? "Consulta"} com ${item.doctorName}, status ${badge.label}, ${formatDayMonth(item.dateTime)} às ${formatTime(item.dateTime)}`}
+      className="min-h-[72px] gap-3 rounded-2xl border border-line bg-white p-4 active:opacity-85"
+    >
       <View className="flex-row items-center justify-between gap-2">
         <View
           className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 ${badge.badgeClass}`}
@@ -188,7 +215,7 @@ function ConsultationCard({
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -201,6 +228,7 @@ const FILTER_OPTIONS: { key: ConsultationFilter; label: string }[] = [
 // Listagem de consultas futuras e historico do paciente com filtro e atualizacao.
 export function PatientConsultationsScreen({ navigation }: Props) {
   const { appointments, status, reload } = useAppointments();
+  const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [filter, setFilter] = useState<ConsultationFilter>("ALL");
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
@@ -216,11 +244,19 @@ export function PatientConsultationsScreen({ navigation }: Props) {
     if (filter === "ALL") return appointments;
 
     return appointments.filter((item) => {
-      const visual = resolveVisualStatus(item.status, item.dateTime, nowIso);
+      const effectiveStatus = getEffectiveAppointmentStatus(
+        item,
+        attendanceById[item.id]
+      );
+      const visual = resolveVisualStatus(
+        effectiveStatus,
+        item.dateTime,
+        nowIso
+      );
       const isUpcoming = visual === "AGENDADO" || visual === "CONFIRMADO";
       return filter === "UPCOMING" ? isUpcoming : !isUpcoming;
     });
-  }, [appointments, filter, nowIso]);
+  }, [appointments, attendanceById, filter, nowIso]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -355,7 +391,16 @@ export function PatientConsultationsScreen({ navigation }: Props) {
         data={status === "ready" ? filteredAppointments : []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <ConsultationCard item={item} nowIso={nowIso} />
+          <ConsultationCard
+            item={item}
+            nowIso={nowIso}
+            attendance={attendanceById[item.id]}
+            onPress={() =>
+              navigation.navigate("PatientAppointmentDetails", {
+                appointmentId: item.id,
+              })
+            }
+          />
         )}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
