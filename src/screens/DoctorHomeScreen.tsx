@@ -268,6 +268,10 @@ export function DoctorHomeScreen(_props: Props) {
       <AppScreenHeader
         title={`Olá${firstName ? `, Dr(a). ${firstName}` : ""}`}
         subtitle="Acompanhe seus atendimentos e prescrições."
+        onLogoutPress={() => {
+          void handleLogout();
+        }}
+        logoutDisabled={loggingOut}
         icon={<StethoscopeIcon color="#0e706f" size={28} />}
       />
 
@@ -422,18 +426,6 @@ export function DoctorHomeScreen(_props: Props) {
             ))}
           </View>
         ) : null}
-
-        <View className="mt-auto gap-3 pt-2">
-          <Button
-            label={loggingOut ? "Saindo..." : "Sair da conta"}
-            variant="danger-outline"
-            disabled={loggingOut}
-            accessibilityLabel="Sair da conta"
-            onPress={() => {
-              void handleLogout();
-            }}
-          />
-        </View>
       </ScrollView>
 
       <SendPrescriptionModal

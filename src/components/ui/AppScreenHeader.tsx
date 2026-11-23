@@ -14,17 +14,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
 import { BrandLogo } from "./BrandLogo";
+import { LogoutButton } from "./LogoutButton";
 
 export interface AppScreenHeaderProps {
   title: string;
   subtitle?: string;
   onBackPress?: () => void;
   backAccessibilityLabel?: string;
+  onLogoutPress?: () => void;
+  logoutDisabled?: boolean;
   icon?: ReactNode;
   imageSource?: ImageSourcePropType;
   rightTopSlot?: ReactNode;
   badge?: ReactNode;
 }
+
+const HEADER_BRAND_HEIGHT = 26;
 
 const styles = StyleSheet.create({
   container: {
@@ -58,6 +63,8 @@ export function AppScreenHeader({
   subtitle,
   onBackPress,
   backAccessibilityLabel = "Voltar",
+  onLogoutPress,
+  logoutDisabled = false,
   icon,
   imageSource,
   rightTopSlot,
@@ -88,6 +95,12 @@ export function AppScreenHeader({
           >
             <ArrowLeftTealIcon />
           </Pressable>
+        ) : onLogoutPress ? (
+          <LogoutButton
+            onPress={onLogoutPress}
+            disabled={logoutDisabled}
+            height={HEADER_BRAND_HEIGHT}
+          />
         ) : (
           <View className="min-h-[48px] min-w-[48px]" />
         )}
@@ -95,7 +108,7 @@ export function AppScreenHeader({
         <View className="flex-row items-center gap-2.5">
           {badge}
           {rightTopSlot}
-          <BrandLogo height={26} />
+          <BrandLogo height={HEADER_BRAND_HEIGHT} />
         </View>
       </View>
 

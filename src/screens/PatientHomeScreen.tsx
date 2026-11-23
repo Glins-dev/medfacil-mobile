@@ -35,6 +35,7 @@ import {
   useAppointmentStore,
   useNextAppointment,
 } from "@/stores/appointment.store";
+import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { describeDate, formatTime, getClinicDateKey } from "@/utils/date";
 import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
@@ -62,9 +63,11 @@ const styles = StyleSheet.create({
 // Tela inicial do paciente alinhada ao layout oficial com hero, proxima consulta e funcoes.
 export function PatientHomeScreen({ navigation }: Props) {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { appointment, status, reload } = useNextAppointment();
   const attendanceById = useAppointmentStore((s) => s.attendanceById);
   const [refreshing, setRefreshing] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [comingSoonTitle, setComingSoonTitle] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
@@ -88,11 +91,28 @@ export function PatientHomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await authService.logout();
+    } catch {
+      // Logout local ocorre independentemente da resposta do servidor.
+    } finally {
+      logout();
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-[#f8fbfb]">
       <PatientScreenHeader
         title={`Olá${firstName ? `, ${firstName}` : ""}`}
         subtitle="O que você precisa hoje?"
+        onLogoutPress={() => {
+          void handleLogout();
+        }}
+        logoutDisabled={loggingOut}
         icon={<HomeIcon color="#0e706f" size={28} />}
       />
 

@@ -20,10 +20,6 @@ export interface InputProps extends TextInputProps {
 }
 
 const styles = StyleSheet.create({
-  inputWrapper: {
-    position: "relative",
-    justifyContent: "center",
-  },
   inputBase: {
     minHeight: 48,
     width: "100%",
@@ -31,22 +27,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1f2d33",
   },
-  inputPassword: {
-    paddingRight: 52,
-  },
   inputDisabled: {
     opacity: 0.6,
   },
   eyeButton: {
-    position: "absolute",
-    right: 2,
-    top: 0,
-    bottom: 0,
-    minHeight: 48,
-    minWidth: 48,
-    alignItems: "center",
+    alignSelf: "flex-start",
+    minHeight: 36,
+    minWidth: 36,
+    alignItems: "flex-start",
     justifyContent: "center",
-    borderRadius: 12,
+    paddingLeft: 2,
+    borderRadius: 10,
   },
 });
 
@@ -69,7 +60,7 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-// Campo de texto acessivel com rotulo explicito, halo neon esverdeado no foco e toggle de senha.
+// Campo de texto acessivel com rotulo explicito, halo neon esverdeado no foco e toggle de senha externo.
 export function Input({
   label,
   error,
@@ -100,49 +91,46 @@ export function Input({
       ) : null}
 
       <View style={haloStyle}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            editable={editable}
-            accessibilityLabel={accessibilityLabel ?? label}
-            placeholderTextColor="#6b7280"
-            secureTextEntry={isPassword && !showPassword}
-            onFocus={(event) => {
-              setFocused(true);
-              onFocus?.(event);
-            }}
-            onBlur={(event) => {
-              setFocused(false);
-              onBlur?.(event);
-            }}
-            className={inputClassName || undefined}
-            style={[
-              styles.inputBase,
-              boxStyle,
-              isPassword ? styles.inputPassword : null,
-              !editable ? styles.inputDisabled : null,
-              style,
-            ]}
-            {...rest}
-          />
-
-          {isPassword ? (
-            <Pressable
-              onPress={() => setShowPassword((prev) => !prev)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPassword ? "Ocultar senha" : "Mostrar senha"
-              }
-              hitSlop={4}
-              style={({ pressed }) => [
-                styles.eyeButton,
-                pressed ? { opacity: 0.7 } : null,
-              ]}
-            >
-              <EyeIcon off={showPassword} />
-            </Pressable>
-          ) : null}
-        </View>
+        <TextInput
+          editable={editable}
+          accessibilityLabel={accessibilityLabel ?? label}
+          placeholderTextColor="#6b7280"
+          secureTextEntry={isPassword && !showPassword}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
+          className={inputClassName || undefined}
+          style={[
+            styles.inputBase,
+            boxStyle,
+            !editable ? styles.inputDisabled : null,
+            style,
+          ]}
+          {...rest}
+        />
       </View>
+
+      {isPassword ? (
+        <Pressable
+          onPress={() => setShowPassword((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            showPassword ? "Ocultar senha" : "Mostrar senha"
+          }
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.eyeButton,
+            pressed ? { opacity: 0.7 } : null,
+          ]}
+        >
+          <EyeIcon off={showPassword} />
+        </Pressable>
+      ) : null}
 
       {error ? (
         <Text accessibilityRole="alert" className="text-xs font-medium text-danger">

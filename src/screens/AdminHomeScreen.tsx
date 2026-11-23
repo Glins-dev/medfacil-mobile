@@ -239,6 +239,10 @@ export function AdminHomeScreen({ navigation }: Props) {
       <AppScreenHeader
         title={firstName ? `Olá, ${firstName}` : "Painel Administrativo"}
         subtitle="Gestão de especialidades, médicos, hospitais e horários."
+        onLogoutPress={() => {
+          void handleLogout();
+        }}
+        logoutDisabled={loggingOut}
         icon={<AdminPanelIcon />}
       />
 
@@ -531,8 +535,8 @@ export function AdminHomeScreen({ navigation }: Props) {
           ) : null}
         </View>
 
-        <View className="mt-auto gap-3 pt-2">
-          {user?.email ? (
+        {user?.email ? (
+          <View className="mt-auto pt-2">
             <View className="rounded-2xl border border-[#e6ecee] bg-[#f6f8f9] px-4 py-3">
               <Text className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
                 Conta administrativa
@@ -541,18 +545,8 @@ export function AdminHomeScreen({ navigation }: Props) {
                 {user.email}
               </Text>
             </View>
-          ) : null}
-
-          <Button
-            label={loggingOut ? "Saindo..." : "Sair da conta"}
-            variant="danger-outline"
-            disabled={loggingOut}
-            accessibilityLabel="Sair da conta"
-            onPress={() => {
-              void handleLogout();
-            }}
-          />
-        </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       <NewSpecialtyModal
