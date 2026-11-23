@@ -1,5 +1,6 @@
 import { api } from "@/services/api";
 import type { SessionUser } from "@/stores/auth.store";
+import type { UserSex } from "@/types/user";
 import { onlyDigits } from "@/utils/cpf";
 
 export interface LoginPayload {
@@ -13,6 +14,7 @@ export interface RegisterPayload {
   cpf: string;
   phone: string;
   birthDate: string; // DD/MM/AAAA
+  sexo?: UserSex;
   password: string;
 }
 

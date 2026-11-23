@@ -47,11 +47,11 @@ export function Input({
   const [showPassword, setShowPassword] = useState(false);
 
   const isPassword = Boolean(secureTextEntry);
-  const borderClass = error
-    ? "border-danger"
+  const fieldStateClass = error
+    ? "border-[1.5px] border-danger bg-white"
     : focused
-      ? "border-[#0e706f]"
-      : "border-[#d6e0e2]";
+      ? "border-[1.5px] border-[#0e706f] bg-white"
+      : "border border-[#dce5e7] bg-[#f9fcfc]";
 
   return (
     <View className={`w-full gap-1.5 ${containerClassName}`}>
@@ -73,7 +73,7 @@ export function Input({
             setFocused(false);
             onBlur?.(event);
           }}
-          className={`min-h-[48px] w-full rounded-2xl border-2 bg-white px-4 text-base text-ink ${borderClass} ${
+          className={`min-h-[48px] w-full rounded-2xl px-4 text-base text-ink ${fieldStateClass} ${
             isPassword ? "pr-14" : ""
           } ${!editable ? "opacity-60" : ""} ${inputClassName}`}
           {...rest}

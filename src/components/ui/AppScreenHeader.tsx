@@ -100,7 +100,9 @@ export function AppScreenHeader({
       </View>
 
       <View className="mt-4 flex-row items-center justify-between gap-3">
-        <View className="min-w-0 flex-1 gap-1 pr-3">
+        <View
+          className={`min-w-0 flex-1 gap-1 ${imageSource || icon ? "pr-3" : ""}`}
+        >
           <Text
             accessibilityRole="header"
             className="text-2xl font-bold leading-tight text-[#004959]"

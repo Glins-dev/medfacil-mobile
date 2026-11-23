@@ -10,7 +10,7 @@ export function AuthStack() {
   return (
     <Stack.Navigator
       initialRouteName="Login"
-      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#fef7e5" } }}
+      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#f8fbfb" } }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />

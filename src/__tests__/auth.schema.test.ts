@@ -33,6 +33,7 @@ describe("registerSchema", () => {
     cpf: "529.982.247-25",
     phone: "(81) 99999-8888",
     birthDate: "15/05/1990",
+    sexo: "Feminino" as const,
     password: "Password123",
     confirmPassword: "Password123",
   };
@@ -40,6 +41,43 @@ describe("registerSchema", () => {
   it("aceita dados completos validos de autocadastro", () => {
     const parsed = registerSchema.safeParse(validPayload);
     expect(parsed.success).toBe(true);
+  });
+
+  it("aceita todas as opcoes validas do campo sexo", () => {
+    for (const sexo of ["Masculino", "Feminino", "Não informar"] as const) {
+      const parsed = registerSchema.safeParse({
+        ...validPayload,
+        sexo,
+      });
+      expect(parsed.success).toBe(true);
+    }
+  });
+
+  it("rejeita valor invalido ou ausente para o campo sexo", () => {
+    const invalidOption = registerSchema.safeParse({
+      ...validPayload,
+      sexo: "Outro",
+    });
+    expect(invalidOption.success).toBe(false);
+    if (!invalidOption.success) {
+      expect(invalidOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
+
+    const emptyOption = registerSchema.safeParse({
+      ...validPayload,
+      sexo: "",
+    });
+    expect(emptyOption.success).toBe(false);
+    if (!emptyOption.success) {
+      expect(emptyOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
+
+    const { sexo: _omitted, ...missingSexo } = validPayload;
+    const omittedOption = registerSchema.safeParse(missingSexo);
+    expect(omittedOption.success).toBe(false);
+    if (!omittedOption.success) {
+      expect(omittedOption.error.issues[0]?.path).toEqual(["sexo"]);
+    }
   });
 
   it("rejeita e-mail invalido, telefone curto e data invalida", () => {

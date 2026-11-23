@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import { USER_SEX_OPTIONS, type UserSex } from "@/types/user";
 import { isValidCpf, onlyDigits } from "@/utils/cpf";
 import { isValidDate } from "@/utils/date";
+
+export { USER_SEX_OPTIONS, type UserSex };
 
 export const loginSchema = z.object({
   cpf: z
@@ -40,6 +43,9 @@ export const registerSchema = z
       .string()
       .min(1, "Informe sua data de nascimento.")
       .refine(isValidDate, "Use o formato DD/MM/AAAA."),
+    sexo: z.enum(USER_SEX_OPTIONS, {
+      error: "Selecione uma opção para sexo.",
+    }),
     password: z
       .string()
       .min(8, "Mínimo de 8 caracteres.")

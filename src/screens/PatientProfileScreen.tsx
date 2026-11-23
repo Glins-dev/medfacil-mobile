@@ -168,6 +168,7 @@ export function PatientProfileScreen({ navigation }: Props) {
   const age = calculateAge(user?.birthDate ?? user?.dataNascimento);
   const ageLabel =
     age !== null ? `${age} ${age === 1 ? "ano" : "anos"}` : "Não informada";
+  const sexLabel = user?.sexo?.trim() || "Não informado";
   const formattedCpf = user?.cpf ? maskCpf(user.cpf) : "Não informado";
   const registrationNumber =
     user?.matricula?.trim() ||
@@ -292,6 +293,7 @@ export function PatientProfileScreen({ navigation }: Props) {
             <View className="rounded-2xl border border-line bg-[#f6f8f9] px-4 py-1">
               <ProfileFieldRow label="Nome completo" value={fullName} />
               <ProfileFieldRow label="Idade" value={ageLabel} />
+              <ProfileFieldRow label="Sexo" value={sexLabel} />
               <ProfileFieldRow label="CPF" value={formattedCpf} />
               {user?.email ? (
                 <ProfileFieldRow label="E-mail" value={user.email} />

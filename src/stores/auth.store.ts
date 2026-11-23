@@ -7,6 +7,7 @@ import {
 } from "zustand/middleware";
 
 import type { UserRole } from "@/navigation/types";
+import type { UserSex } from "@/types/user";
 
 export interface SessionUser {
   id: string;
@@ -17,6 +18,7 @@ export interface SessionUser {
   cpf?: string | null;
   birthDate?: string | null;
   dataNascimento?: string | null;
+  sexo?: UserSex | null;
   matricula?: string | null;
   registrationNumber?: string | null;
   patientCode?: string | null;
