@@ -119,7 +119,9 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
 
   const handleConfirmPresence = () => {
     setAttendance(appointment.id, "CONFIRMED");
-    navigation.goBack();
+    navigation.replace("PatientAttendanceConfirmed", {
+      appointmentId: appointment.id,
+    });
   };
 
   const handleDeclinePresence = () => {
@@ -274,7 +276,16 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
         onClose={() => setCancelOpen(false)}
         onCancelled={() => {
           setCancelOpen(false);
-          navigation.popToTop();
+          navigation.reset({
+            index: 1,
+            routes: [
+              {
+                name: "PatientTabs",
+                params: { screen: "PatientConsultations" },
+              },
+              { name: "PatientAppointmentCanceled" },
+            ],
+          });
         }}
       />
     </View>

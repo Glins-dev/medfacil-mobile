@@ -436,7 +436,7 @@ export function PatientAppointmentDetailsScreen({ navigation, route }: Props) {
         onClose={() => setCancelOpen(false)}
         onCancelled={() => {
           setCancelOpen(false);
-          navigation.goBack();
+          navigation.replace("PatientAppointmentCanceled");
         }}
       />
     </View>

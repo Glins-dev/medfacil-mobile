@@ -18,6 +18,8 @@ export type PatientStackParamList = {
   PatientTabs: NavigatorScreenParams<PatientTabParamList> | undefined;
   PatientAppointmentDetails: { appointmentId: string };
   PatientConfirmAttendance: { appointmentId: string };
+  PatientAppointmentCanceled: undefined;
+  PatientAttendanceConfirmed: { appointmentId: string };
 };
 
 export type DoctorTabParamList = {

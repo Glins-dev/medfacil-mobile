@@ -1,6 +1,8 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { PatientAppointmentCanceledScreen } from "@/screens/PatientAppointmentCanceledScreen";
 import { PatientAppointmentDetailsScreen } from "@/screens/PatientAppointmentDetailsScreen";
+import { PatientAttendanceConfirmedScreen } from "@/screens/PatientAttendanceConfirmedScreen";
 import { PatientConfirmAttendanceScreen } from "@/screens/PatientConfirmAttendanceScreen";
 import { PatientTabs } from "./PatientTabs";
 import type { PatientStackParamList } from "./types";
@@ -24,6 +26,14 @@ export function PatientStack() {
       <Stack.Screen
         name="PatientConfirmAttendance"
         component={PatientConfirmAttendanceScreen}
+      />
+      <Stack.Screen
+        name="PatientAppointmentCanceled"
+        component={PatientAppointmentCanceledScreen}
+      />
+      <Stack.Screen
+        name="PatientAttendanceConfirmed"
+        component={PatientAttendanceConfirmedScreen}
       />
     </Stack.Navigator>
   );
