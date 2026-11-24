@@ -44,7 +44,7 @@ export const registerSchema = z
       .min(1, "Informe sua data de nascimento.")
       .refine(isValidDate, "Use o formato DD/MM/AAAA."),
     sexo: z.enum(USER_SEX_OPTIONS, {
-      error: "Selecione uma opção para sexo.",
+      error: "Selecione uma opção para gênero.",
     }),
     endereco: z
       .string({ error: "Informe seu endereço completo." })

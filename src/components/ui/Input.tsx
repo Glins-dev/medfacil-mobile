@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { forwardRef, useState, type ComponentRef } from "react";
 import {
   Pressable,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -61,7 +62,7 @@ function EyeIcon({ off }: { off: boolean }) {
 }
 
 // Campo de texto acessivel com rotulo explicito, halo neon esverdeado no foco e toggle de senha externo.
-export function Input({
+export const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(function Input({
   label,
   error,
   hint,
@@ -74,13 +75,16 @@ export function Input({
   accessibilityLabel,
   style,
   ...rest
-}: InputProps) {
+}: InputProps, ref) {
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // A sombra nativa combinada com uma nova renderizacao no foco pode fechar o
+  // teclado no iOS/Expo Go. Nessa plataforma, o cursor colorido indica o foco.
+  const focusGlowEnabled = Platform.OS !== "ios";
 
   const isPassword = Boolean(secureTextEntry);
   const { haloStyle, boxStyle } = getFieldFrameStyles({
-    active: focused,
+    active: focusGlowEnabled && focused,
     error: Boolean(error),
   });
 
@@ -92,16 +96,18 @@ export function Input({
 
       <View style={haloStyle}>
         <TextInput
+          ref={ref}
           editable={editable}
           accessibilityLabel={accessibilityLabel ?? label}
           placeholderTextColor="#6b7280"
+          selectionColor="#0e706f"
           secureTextEntry={isPassword && !showPassword}
           onFocus={(event) => {
-            setFocused(true);
+            if (focusGlowEnabled) setFocused(true);
             onFocus?.(event);
           }}
           onBlur={(event) => {
-            setFocused(false);
+            if (focusGlowEnabled) setFocused(false);
             onBlur?.(event);
           }}
           className={inputClassName || undefined}
@@ -141,4 +147,4 @@ export function Input({
       ) : null}
     </View>
   );
-}
+});
