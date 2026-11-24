@@ -163,13 +163,20 @@ function hasActiveSlotConflict(
 
 export const appointmentService = {
   list: async (): Promise<Appointment[]> => {
-    const { data } = await api.get<{ appointments: Appointment[] }>(
-      "/appointments"
-    );
+    const [{ data: upcomingData }, { data: historyData }] = await Promise.all([
+      api.get<{ appointments: Appointment[] }>("/appointments"),
+      api.get<{ appointments: Appointment[] }>("/appointments/history"),
+    ]);
     const adminState = useAdminStore.getState();
     const currentUserId = useAuthStore.getState().user?.id;
 
-    const remoteEnriched: Appointment[] = data.appointments.map((appt) => {
+    const remoteById = new Map(
+      [...upcomingData.appointments, ...historyData.appointments].map((item) => [
+        item.id,
+        item,
+      ])
+    );
+    const remoteEnriched: Appointment[] = [...remoteById.values()].map((appt) => {
       const savedLocation = adminState.appointmentLocationsById[appt.id];
       return {
         ...appt,
