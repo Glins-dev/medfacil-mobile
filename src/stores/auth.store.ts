@@ -13,6 +13,7 @@ export interface SessionUser {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   role: UserRole;
   crm?: string | null;
   cpf?: string | null;
@@ -31,6 +32,7 @@ export interface AuthState {
   user: SessionUser | null;
   _hasHydrated: boolean;
   setSession: (token: string, user: SessionUser) => void;
+  updateUser: (user: SessionUser) => void;
   logout: () => void;
   setHasHydrated: (value: boolean) => void;
 }
@@ -132,6 +134,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       _hasHydrated: false,
       setSession: (token, user) => set({ token, user }),
+      updateUser: (user) => set({ user }),
       logout: () => set({ token: null, user: null }),
       setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),

@@ -37,7 +37,10 @@ export function CancelAppointmentModal({
     setError("");
     try {
       await appointmentService.cancel(appointment.id);
-      useAppointmentStore.getState().remove(appointment.id);
+      useAppointmentStore.getState().upsert({
+        ...appointment,
+        status: "CANCELADO",
+      });
       onCancelled(appointment);
     } catch (err) {
       setError(

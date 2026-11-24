@@ -24,6 +24,15 @@ export interface AuthResponse {
   user: SessionUser;
 }
 
+export interface UpdateProfilePayload {
+  name: string;
+  email: string;
+  phone: string;
+  birthDate: string;
+  sexo: UserSex;
+  endereco: string;
+}
+
 export const authService = {
   login: async (payload: LoginPayload): Promise<AuthResponse> => {
     const { data } = await api.post<AuthResponse>("/auth/login", {
@@ -44,5 +53,18 @@ export const authService = {
 
   logout: async (): Promise<void> => {
     await api.post("/auth/logout");
+  },
+
+  profile: async (): Promise<SessionUser> => {
+    const { data } = await api.get<{ user: SessionUser }>("/auth/me");
+    return data.user;
+  },
+
+  updateProfile: async (payload: UpdateProfilePayload): Promise<SessionUser> => {
+    const { data } = await api.patch<{ user: SessionUser }>("/auth/me", {
+      ...payload,
+      phone: onlyDigits(payload.phone),
+    });
+    return data.user;
   },
 };

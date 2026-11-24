@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Image,
   Pressable,
@@ -14,6 +14,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 import {
   Button,
   FLOATING_TAB_BAR_SCROLL_OFFSET,
+  Input,
   Modal,
   PatientScreenHeader,
 } from "@/components";
@@ -21,9 +22,11 @@ import { CLINIC_INFO } from "@/constants/clinic";
 import { UserIcon } from "@/navigation/icons";
 import type { PatientTabParamList } from "@/navigation/types";
 import { authService } from "@/services/auth.service";
-import { useAuthStore } from "@/stores/auth.store";
+import { getApiErrorMessage } from "@/services/api";
+import { saveLocalUserAddress, useAuthStore } from "@/stores/auth.store";
+import { USER_SEX_OPTIONS, type UserSex } from "@/types/user";
 import { calculateAge } from "@/utils/date";
-import { maskCpf } from "@/utils/masks";
+import { maskCpf, maskPhone } from "@/utils/masks";
 import { MEDICAL_IMAGES } from "@/utils/specialtyIcons";
 
 type Props = BottomTabScreenProps<PatientTabParamList, "PatientProfile">;
@@ -160,11 +163,17 @@ function ProfileFieldRow({
 export function PatientProfileScreen(_props: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const [loggingOut, setLoggingOut] = useState(false);
   const [activeModal, setActiveModal] = useState<ProfileModalKey | null>(null);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [confirmAlertsEnabled, setConfirmAlertsEnabled] = useState(true);
   const [simpleModeEnabled, setSimpleModeEnabled] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileForm, setProfileForm] = useState({
+    name: "", email: "", phone: "", birthDate: "", sexo: "Não informar" as UserSex, endereco: "",
+  });
 
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
@@ -182,6 +191,43 @@ export function PatientProfileScreen(_props: Props) {
     user?.registrationNumber?.trim() ||
     user?.patientCode?.trim() ||
     "Não informada";
+
+  useEffect(() => {
+    let active = true;
+    void authService.profile().then((profile) => {
+      if (active) updateUser(profile);
+    }).catch(() => {
+      // Mantem os dados locais se a atualizacao estiver indisponivel.
+    });
+    return () => { active = false; };
+  }, [updateUser]);
+
+  const openPersonalData = () => {
+    setProfileError("");
+    setProfileForm({
+      name: user?.name ?? "",
+      email: user?.email ?? "",
+      phone: maskPhone(user?.phone ?? ""),
+      birthDate: user?.birthDate ?? user?.dataNascimento ?? "",
+      sexo: user?.sexo ?? "Não informar",
+      endereco: user?.endereco ?? user?.address ?? "",
+    });
+    setActiveModal("personal");
+  };
+
+  const handleSaveProfile = async () => {
+    if (savingProfile) return;
+    setSavingProfile(true);
+    setProfileError("");
+    try {
+      const updated = await authService.updateProfile(profileForm);
+      updateUser(updated);
+      await saveLocalUserAddress({ userId: updated.id, cpf: updated.cpf, address: updated.endereco });
+      setActiveModal(null);
+    } catch (error) {
+      setProfileError(getApiErrorMessage(error, "Não foi possível salvar seus dados."));
+    } finally { setSavingProfile(false); }
+  };
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -225,7 +271,7 @@ export function PatientProfileScreen(_props: Props) {
               icon={<UserIcon color="#0e706f" size={24} />}
               title="Dados pessoais"
               subtitle={fullName}
-              onPress={() => setActiveModal("personal")}
+              onPress={openPersonalData}
             />
 
             <ProfileOptionCard
@@ -277,26 +323,41 @@ export function PatientProfileScreen(_props: Props) {
         onClose={() => setActiveModal(null)}
         title={activeModal ? modalTitles[activeModal] : "Perfil"}
         closeLabel="Fechar"
+        scrollable={activeModal === "personal"}
       >
         {activeModal === "personal" ? (
           <View className="gap-4">
-            <View className="rounded-2xl border border-line bg-[#f6f8f9] px-4 py-1">
-              <ProfileFieldRow label="Nome completo" value={fullName} />
-              <ProfileFieldRow label="Idade" value={ageLabel} />
-              <ProfileFieldRow label="Sexo" value={sexLabel} />
-              <ProfileFieldRow label="CPF" value={formattedCpf} />
-              <ProfileFieldRow label="Endereço" value={addressLabel} />
-              {user?.email ? (
-                <ProfileFieldRow label="E-mail" value={user.email} />
-              ) : null}
-              <ProfileFieldRow
-                label="Número de matrícula"
-                value={registrationNumber}
-                isLast
+            <View className="gap-3 rounded-2xl border border-line bg-[#f6f8f9] p-4">
+              <Input label="Nome completo" value={profileForm.name} onChangeText={(name) => setProfileForm((s) => ({ ...s, name }))} />
+              <Input label="E-mail" value={profileForm.email} onChangeText={(email) => setProfileForm((s) => ({ ...s, email }))} keyboardType="email-address" autoCapitalize="none" />
+              <Input label="Telefone" value={profileForm.phone} onChangeText={(phone) => setProfileForm((s) => ({ ...s, phone: maskPhone(phone) }))} keyboardType="phone-pad" />
+              <Input
+                label="Data de nascimento"
+                value={profileForm.birthDate}
+                editable={false}
+                style={{ backgroundColor: "#d1d5db", color: "#374151", opacity: 1 }}
+              />
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-[#004959]">Gênero</Text>
+                <View className="gap-2">
+                  {USER_SEX_OPTIONS.map((option) => (
+                    <Pressable key={option} onPress={() => setProfileForm((s) => ({ ...s, sexo: option }))} accessibilityRole="radio" accessibilityState={{ selected: profileForm.sexo === option }} className={`min-h-[48px] justify-center rounded-xl border px-4 ${profileForm.sexo === option ? "border-brand bg-[#dff4f2]" : "border-line bg-white"}`}>
+                      <Text className="text-base text-ink">{option}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <Input label="Endereço" value={profileForm.endereco} onChangeText={(endereco) => setProfileForm((s) => ({ ...s, endereco }))} />
+              <Input
+                label="CPF"
+                value={formattedCpf}
+                editable={false}
+                style={{ backgroundColor: "#d1d5db", color: "#374151", opacity: 1 }}
               />
             </View>
-
-            <Button label="Fechar" onPress={() => setActiveModal(null)} />
+            {profileError ? <Text accessibilityRole="alert" className="text-sm font-medium text-danger">{profileError}</Text> : null}
+            <Button label="Salvar alterações" loading={savingProfile} onPress={() => { void handleSaveProfile(); }} />
+            <Button label="Cancelar" variant="outline" disabled={savingProfile} onPress={() => setActiveModal(null)} />
           </View>
         ) : null}
 

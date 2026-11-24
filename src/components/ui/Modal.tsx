@@ -4,6 +4,7 @@ import {
   Modal as RNModal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -16,6 +17,7 @@ export interface ModalProps {
   title: string;
   children: ReactNode;
   closeLabel?: string;
+  scrollable?: boolean;
 }
 
 function CloseIcon() {
@@ -43,6 +45,7 @@ export function Modal({
   title,
   children,
   closeLabel = "Fechar modal",
+  scrollable = false,
 }: ModalProps) {
   return (
     <RNModal
@@ -66,8 +69,9 @@ export function Modal({
           <View
             accessibilityViewIsModal
             className="rounded-t-3xl bg-white px-6 pt-5 shadow-xl"
+            style={{ maxHeight: "92%" }}
           >
-            <SafeAreaView edges={["bottom"]} className="pb-4">
+            <SafeAreaView edges={["bottom"]} className="shrink pb-4">
               <View className="mb-4 flex-row items-center justify-between gap-3">
                 <Text
                   accessibilityRole="header"
@@ -87,7 +91,18 @@ export function Modal({
                 </Pressable>
               </View>
 
-              <View>{children}</View>
+              {scrollable ? (
+                <ScrollView
+                  className="shrink"
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                >
+                  {children}
+                </ScrollView>
+              ) : (
+                <View>{children}</View>
+              )}
             </SafeAreaView>
           </View>
         </KeyboardAvoidingView>

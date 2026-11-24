@@ -1,15 +1,7 @@
-import {
-  type ComponentRef,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -61,41 +53,6 @@ export function LoginScreen({ navigation }: Props) {
         ? (StatusBar.currentHeight ?? 0)
         : 0;
   const scrollBottomPadding = Math.max(insets.bottom, 24) + 16;
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollViewRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const cardTopOffsetRef = useRef(0);
-  const fieldOffsetsRef = useRef<Record<string, number>>({});
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-      if (scrollTimerRef.current) {
-        clearTimeout(scrollTimerRef.current);
-      }
-    };
-  }, []);
-
-  const scrollToField = useCallback((fieldKey: string) => {
-    const fieldY = fieldOffsetsRef.current[fieldKey];
-    if (fieldY === undefined) return;
-    if (scrollTimerRef.current) {
-      clearTimeout(scrollTimerRef.current);
-    }
-    scrollTimerRef.current = setTimeout(() => {
-      const targetY = Math.max(0, cardTopOffsetRef.current + fieldY - 100);
-      scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
-    }, 120);
-  }, []);
 
   const {
     control,
@@ -161,29 +118,13 @@ export function LoginScreen({ navigation }: Props) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          ref={scrollViewRef}
           className="flex-1"
           contentContainerClassName="flex-grow gap-6 px-5 pt-6"
-          contentContainerStyle={{
-            paddingBottom:
-              scrollBottomPadding +
-              (keyboardHeight > 0 ? keyboardHeight + 32 : 0),
-          }}
+          contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
         >
-          <View
-            style={styles.card}
-            onLayout={(event) => {
-              cardTopOffsetRef.current = event.nativeEvent.layout.y;
-            }}
-            className="gap-5 p-6"
-          >
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.cpf = event.nativeEvent.layout.y;
-              }}
-            >
+          <View style={styles.card} className="gap-5 p-6">
+            <View>
               <Controller
                 control={control}
                 name="cpf"
@@ -195,7 +136,6 @@ export function LoginScreen({ navigation }: Props) {
                       if (errors.root) clearErrors("root");
                       onChange(maskCpf(text));
                     }}
-                    onFocus={() => scrollToField("cpf")}
                     onBlur={onBlur}
                     keyboardType="number-pad"
                     autoComplete="username"
@@ -208,11 +148,7 @@ export function LoginScreen({ navigation }: Props) {
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.password = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="password"
@@ -224,11 +160,11 @@ export function LoginScreen({ navigation }: Props) {
                       if (errors.root) clearErrors("root");
                       onChange(text);
                     }}
-                    onFocus={() => scrollToField("password")}
                     onBlur={onBlur}
                     secureTextEntry
                     autoCapitalize="none"
                     autoComplete="current-password"
+                    textContentType="password"
                     placeholder="Digite sua senha"
                     editable={!isSubmitting}
                     error={errors.password?.message}

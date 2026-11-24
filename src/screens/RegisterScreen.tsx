@@ -1,10 +1,4 @@
-import {
-  type ComponentRef,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useRef, useState, type ComponentRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -88,47 +83,20 @@ function CheckIcon() {
   );
 }
 
-// Tela de autocadastro do paciente com dropdown de sexo e rolagem ajustada ao teclado.
+// Tela de autocadastro do paciente com seleção de gênero e rolagem ajustada ao teclado.
 export function RegisterScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = Math.max(insets.bottom, 24) + 16;
 
   const [sexModalOpen, setSexModalOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollViewRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const cardTopOffsetRef = useRef(0);
-  const fieldOffsetsRef = useRef<Record<string, number>>({});
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-      if (scrollTimerRef.current) {
-        clearTimeout(scrollTimerRef.current);
-      }
-    };
-  }, []);
-
-  const scrollToField = useCallback((fieldKey: string) => {
-    const fieldY = fieldOffsetsRef.current[fieldKey];
-    if (fieldY === undefined) return;
-    if (scrollTimerRef.current) {
-      clearTimeout(scrollTimerRef.current);
-    }
-    scrollTimerRef.current = setTimeout(() => {
-      const targetY = Math.max(0, cardTopOffsetRef.current + fieldY - 100);
-      scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
-    }, 120);
-  }, []);
-
+  const nameRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const cpfRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const phoneRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const birthDateRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const addressRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const confirmPasswordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const {
     control,
     handleSubmit,
@@ -199,145 +167,129 @@ export function RegisterScreen({ navigation }: Props) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          ref={scrollViewRef}
           className="flex-1"
           contentContainerClassName="flex-grow gap-5 px-5 pt-6"
-          contentContainerStyle={{
-            paddingBottom:
-              scrollBottomPadding +
-              (keyboardHeight > 0 ? keyboardHeight + 32 : 0),
-          }}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
         >
-          <View
-            style={styles.card}
-            onLayout={(event) => {
-              cardTopOffsetRef.current = event.nativeEvent.layout.y;
-            }}
-            className="gap-4 p-5"
-          >
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.name = event.nativeEvent.layout.y;
-              }}
-            >
+          <View style={styles.card} className="gap-4 p-5">
+            <View>
               <Controller
                 control={control}
                 name="name"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={nameRef}
                     label="Nome completo"
                     value={value}
                     onChangeText={onChange}
-                    onFocus={() => scrollToField("name")}
                     onBlur={onBlur}
                     autoCapitalize="words"
                     autoComplete="name"
                     placeholder="Digite seu nome"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => emailRef.current?.focus()}
                     error={errors.name?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.email = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={emailRef}
                     label="E-mail"
                     value={value}
                     onChangeText={onChange}
-                    onFocus={() => scrollToField("email")}
                     onBlur={onBlur}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
                     placeholder="Digite seu e-mail"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => cpfRef.current?.focus()}
                     error={errors.email?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.cpf = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="cpf"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={cpfRef}
                     label="CPF"
                     value={value}
                     onChangeText={(text) => onChange(maskCpf(text))}
-                    onFocus={() => scrollToField("cpf")}
                     onBlur={onBlur}
                     keyboardType="number-pad"
                     maxLength={14}
                     placeholder="Digite seu CPF"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => phoneRef.current?.focus()}
                     error={errors.cpf?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.phone = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={phoneRef}
                     label="Telefone"
                     value={value}
                     onChangeText={(text) => onChange(maskPhone(text))}
-                    onFocus={() => scrollToField("phone")}
                     onBlur={onBlur}
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     maxLength={15}
                     placeholder="(DDD) 99999-9999"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => birthDateRef.current?.focus()}
                     error={errors.phone?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.birthDate = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="birthDate"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={birthDateRef}
                     label="Data de Nascimento"
                     value={value}
                     onChangeText={(text) => onChange(maskDate(text))}
-                    onFocus={() => scrollToField("birthDate")}
                     onBlur={onBlur}
                     keyboardType="number-pad"
                     maxLength={10}
                     placeholder="DD/MM/AAAA"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => addressRef.current?.focus()}
                     error={errors.birthDate?.message}
                   />
                 )}
@@ -345,7 +297,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="w-full gap-1.5">
-              <Text className="text-sm font-semibold text-[#004959]">Sexo</Text>
+              <Text className="text-sm font-semibold text-[#004959]">Gênero</Text>
 
               <Controller
                 control={control}
@@ -368,8 +320,8 @@ export function RegisterScreen({ navigation }: Props) {
                           accessibilityRole="button"
                           accessibilityLabel={
                             value
-                              ? `Sexo: ${value}. Toque para alterar`
-                              : "Selecionar sexo"
+                              ? `Gênero: ${value}. Toque para alterar`
+                              : "Selecionar gênero"
                           }
                           accessibilityState={{
                             expanded: sexModalOpen,
@@ -386,7 +338,7 @@ export function RegisterScreen({ navigation }: Props) {
                               value ? "text-ink" : "text-[#6b7280]"
                             }`}
                           >
-                            {value || "Selecione o sexo"}
+                            {value || "Selecione o gênero"}
                           </Text>
 
                           <ChevronDownIcon color="#0e706f" />
@@ -396,12 +348,12 @@ export function RegisterScreen({ navigation }: Props) {
                       <Modal
                         open={sexModalOpen}
                         onClose={() => setSexModalOpen(false)}
-                        title="Selecione o sexo"
-                        closeLabel="Fechar opções de sexo"
+                        title="Selecione o gênero"
+                        closeLabel="Fechar opções de gênero"
                       >
                         <View
                           accessibilityRole="radiogroup"
-                          accessibilityLabel="Opções para sexo"
+                          accessibilityLabel="Opções para gênero"
                           className="gap-2.5 pb-2"
                         >
                           {USER_SEX_OPTIONS.map((option) => {
@@ -457,46 +409,41 @@ export function RegisterScreen({ navigation }: Props) {
               ) : null}
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.endereco = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="endereco"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={addressRef}
                     label="Endereço"
                     value={value}
                     onChangeText={onChange}
-                    onFocus={() => scrollToField("endereco")}
                     onBlur={onBlur}
                     autoCapitalize="words"
                     autoComplete="street-address"
                     placeholder="Ex.: Rua das Flores, 123, Bairro, Cidade, UF"
                     hint="Informe rua, número, bairro, cidade e estado."
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => passwordRef.current?.focus()}
                     error={errors.endereco?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.password = event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={passwordRef}
                     label="Senha"
                     value={value}
                     onChangeText={onChange}
-                    onFocus={() => scrollToField("password")}
                     onBlur={onBlur}
                     secureTextEntry
                     autoCapitalize="none"
@@ -504,33 +451,35 @@ export function RegisterScreen({ navigation }: Props) {
                     placeholder="Crie uma senha segura"
                     hint="Mínimo de 8 caracteres"
                     editable={!isSubmitting}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                     error={errors.password?.message}
                   />
                 )}
               />
             </View>
 
-            <View
-              onLayout={(event) => {
-                fieldOffsetsRef.current.confirmPassword =
-                  event.nativeEvent.layout.y;
-              }}
-            >
+            <View>
               <Controller
                 control={control}
                 name="confirmPassword"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    ref={confirmPasswordRef}
                     label="Confirmar senha"
                     value={value}
                     onChangeText={onChange}
-                    onFocus={() => scrollToField("confirmPassword")}
                     onBlur={onBlur}
                     secureTextEntry
                     autoCapitalize="none"
                     autoComplete="new-password"
                     placeholder="Repita sua senha"
                     editable={!isSubmitting}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      void handleSubmit(onSubmit)();
+                    }}
                     error={errors.confirmPassword?.message}
                   />
                 )}

@@ -46,7 +46,7 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<PatientStackParamList>
 >;
 
-type ConsultationFilter = "ALL" | "UPCOMING" | "HISTORY";
+type ConsultationFilter = "UPCOMING" | "HISTORY";
 
 type VisualStatus = "AGENDADO" | "CONFIRMADO" | "CONCLUIDO" | "CANCELADO";
 
@@ -225,7 +225,6 @@ function ConsultationCard({
 }
 
 const FILTER_OPTIONS: { key: ConsultationFilter; label: string }[] = [
-  { key: "ALL", label: "Todas" },
   { key: "UPCOMING", label: "Futuras" },
   { key: "HISTORY", label: "Histórico" },
 ];
@@ -237,7 +236,7 @@ const ICON_CONSULTAS =
 export function PatientConsultationsScreen({ navigation }: Props) {
   const { appointments, status, reload } = useAppointments();
   const attendanceById = useAppointmentStore((s) => s.attendanceById);
-  const [filter, setFilter] = useState<ConsultationFilter>("ALL");
+  const [filter, setFilter] = useState<ConsultationFilter>("UPCOMING");
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
   const scrollBottomPadding = FLOATING_TAB_BAR_SCROLL_OFFSET + insets.bottom;
@@ -245,8 +244,6 @@ export function PatientConsultationsScreen({ navigation }: Props) {
   const nowIso = new Date().toISOString();
 
   const filteredAppointments = useMemo(() => {
-    if (filter === "ALL") return appointments;
-
     return appointments.filter((item) => {
       const effectiveStatus = getEffectiveAppointmentStatus(
         item,
@@ -338,26 +335,24 @@ export function PatientConsultationsScreen({ navigation }: Props) {
     const emptyTitle =
       filter === "HISTORY"
         ? "Nenhuma consulta no histórico"
-        : filter === "UPCOMING"
-          ? "Nenhuma consulta futura"
-          : "Você ainda não tem consultas";
+        : "Nenhuma consulta futura";
 
     return (
       <View className="gap-4 rounded-2xl border border-line bg-white p-6">
         <View className="gap-1">
           <Text className="text-lg font-bold text-ink">{emptyTitle}</Text>
           <Text className="text-sm text-muted">
-            {filter === "ALL" || filter === "UPCOMING"
+            {filter === "UPCOMING"
               ? "Agende uma nova consulta em poucos passos."
               : "Consultas concluídas ou canceladas aparecerão aqui."}
           </Text>
         </View>
 
-        {filter !== "ALL" ? (
+        {filter === "HISTORY" ? (
           <Button
-            label="Mostrar todas"
+            label="Ver consultas futuras"
             variant="outline"
-            onPress={() => setFilter("ALL")}
+            onPress={() => setFilter("UPCOMING")}
           />
         ) : (
           <Button
