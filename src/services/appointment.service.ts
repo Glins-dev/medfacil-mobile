@@ -211,6 +211,13 @@ export const appointmentService = {
     await api.patch(`/appointments/${id}/cancel`);
   },
 
+  confirm: async (id: string): Promise<Appointment> => {
+    const { data } = await api.patch<{ appointment: Appointment }>(
+      `/appointments/${id}/confirm`
+    );
+    return data.appointment;
+  },
+
   book: async (payload: BookAppointmentPayload): Promise<Appointment> => {
     const requestBody = buildBookRequestPayload(payload);
     const adminState = useAdminStore.getState();

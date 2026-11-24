@@ -23,6 +23,8 @@ import {
 } from "@/components";
 import { CLINIC_INFO } from "@/constants/clinic";
 import type { PatientStackParamList } from "@/navigation/types";
+import { getApiErrorMessage } from "@/services/api";
+import { appointmentService } from "@/services/appointment.service";
 import { useAppointmentStore } from "@/stores/appointment.store";
 import { formatLongDate, formatTime, getPeriod } from "@/utils/date";
 
@@ -84,6 +86,8 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
   );
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   const topInset =
     insets.top > 0
@@ -118,11 +122,24 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
     );
   }
 
-  const handleConfirmPresence = () => {
-    setAttendance(appointment.id, "CONFIRMED");
-    navigation.replace("PatientAttendanceConfirmed", {
-      appointmentId: appointment.id,
-    });
+  const handleConfirmPresence = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    setConfirmError("");
+    try {
+      const confirmed = await appointmentService.confirm(appointment.id);
+      useAppointmentStore.getState().upsert(confirmed);
+      setAttendance(appointment.id, "CONFIRMED");
+      navigation.replace("PatientAttendanceConfirmed", {
+        appointmentId: appointment.id,
+      });
+    } catch (error) {
+      setConfirmError(
+        getApiErrorMessage(error, "Não foi possível confirmar sua presença.")
+      );
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const handleDeclinePresence = () => {
@@ -213,19 +230,27 @@ export function PatientConfirmAttendanceScreen({ navigation, route }: Props) {
 
         <View className="gap-3">
           <Button
-            label="Sim, vou comparecer"
+            label={confirming ? "Confirmando..." : "Sim, vou comparecer"}
             variant="primary"
+            loading={confirming}
             accessibilityLabel="Sim, vou comparecer"
-            onPress={handleConfirmPresence}
+            onPress={() => { void handleConfirmPresence(); }}
           />
 
           <Button
             label="Não consigo ir nesse horário"
             variant="outline"
             accessibilityLabel="Não consigo ir nesse horário"
+            disabled={confirming}
             onPress={handleDeclinePresence}
           />
         </View>
+
+        {confirmError ? (
+          <Text accessibilityRole="alert" className="text-center text-sm font-medium text-danger">
+            {confirmError}
+          </Text>
+        ) : null}
 
         {unavailableRegistered ? (
           <View className="gap-3 rounded-2xl border border-line bg-surface p-4">
